@@ -77,4 +77,14 @@ export class SavingsController {
       next(err);
     }
   };
+
+  listDeposits: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const deposits = await this.savingsService.listDeposits(user.id, req.params.id as string);
+      res.json({ success: true, data: deposits });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

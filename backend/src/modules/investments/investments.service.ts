@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
 import { AppError } from '../../shared/utils/AppError.js';
@@ -81,6 +81,15 @@ export class InvestmentsService {
 
     const reachedMilestones = await this.checkMilestones(userId);
     return { entry, reachedMilestones };
+  }
+
+  async listEntries(userId: string, accountId: string) {
+    await this.getById(userId, accountId);
+    return this.db
+      .select()
+      .from(schema.investmentEntries)
+      .where(eq(schema.investmentEntries.investmentAccountId, accountId))
+      .orderBy(asc(schema.investmentEntries.date));
   }
 
   async getMilestones(userId: string) {

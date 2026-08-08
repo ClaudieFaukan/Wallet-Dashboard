@@ -130,6 +130,32 @@ describe('savings module', () => {
       expect(names).toEqual(expect.arrayContaining(['50%', '75%', '100%']));
     });
 
+    it('records each deposit in the history, listed in date order', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/savings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Fonds urgence', targetAmount: 10000, type: 'custom' });
+      const goalId = createRes.body.data.id as string;
+
+      await agent
+        .post(`/api/v1/savings/${goalId}/deposit`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 3000 });
+      await agent
+        .post(`/api/v1/savings/${goalId}/deposit`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 500 });
+
+      const res = await agent
+        .get(`/api/v1/savings/${goalId}/deposits`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data.map((d: { amount: number }) => d.amount)).toEqual([3000, 500]);
+    });
+
     it('does not check milestones for a zero-target goal', async () => {
       const { agent, accessToken, userId } = await registerAndGetToken();
       const [goal] = await db

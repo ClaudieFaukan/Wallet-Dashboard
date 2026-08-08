@@ -31,6 +31,21 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 describe('collectibles module', () => {
+  describe('GET /config', () => {
+    it('reports pokemonpricetracker/poketrace as unconfigured when no key is set', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const res = await agent
+        .get('/api/v1/collectibles/config')
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual({
+        pokemonPriceTrackerConfigured: false,
+        poketraceConfigured: false,
+      });
+    });
+  });
+
   describe('CRUD', () => {
     it('creates a card with a default tcgdex price source', async () => {
       const { agent, accessToken } = await registerAndGetToken();

@@ -134,6 +134,52 @@ describe('investments module', () => {
     });
   });
 
+  describe('GET /:id/entries', () => {
+    it('lists entries sorted by date', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/investments')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'PEA', currentValue: 0 });
+      const accountId = createRes.body.data.id as string;
+
+      await agent
+        .post(`/api/v1/investments/${accountId}/entry`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ date: '2026-02-01', amountInvested: 10_000, portfolioValue: 60_000 });
+      await agent
+        .post(`/api/v1/investments/${accountId}/entry`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ date: '2026-01-01', amountInvested: 50_000, portfolioValue: 50_000 });
+
+      const res = await agent
+        .get(`/api/v1/investments/${accountId}/entries`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(2);
+      expect(res.body.data[0]).toMatchObject({ portfolioValue: 50_000 });
+      expect(res.body.data[1]).toMatchObject({ portfolioValue: 60_000 });
+    });
+
+    it("rejects access to another user's investment account entries", async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const [otherUser] = await db
+        .insert(schema.users)
+        .values({ email: 'other-entries@example.com', passwordHash: 'x', name: 'Other' })
+        .returning();
+      const [foreignAccount] = await db
+        .insert(schema.investmentAccounts)
+        .values({ userId: otherUser!.id, name: 'Not yours', currentValue: 0 })
+        .returning();
+
+      const res = await agent
+        .get(`/api/v1/investments/${foreignAccount!.id}/entries`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('GET /:id/projection', () => {
     it('projects a zero-rate DCA linearly and finds the milestone crossing month', async () => {
       const { agent, accessToken } = await registerAndGetToken();

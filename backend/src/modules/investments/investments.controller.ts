@@ -82,6 +82,16 @@ export class InvestmentsController {
     }
   };
 
+  listEntries: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const entries = await this.investmentsService.listEntries(user.id, req.params.id as string);
+      res.json({ success: true, data: entries });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getProjection: RequestHandler = async (req, res, next) => {
     try {
       const { user } = req as AuthenticatedRequest;

@@ -29,6 +29,7 @@ investmentsRouter.patch(
 );
 investmentsRouter.delete('/:id', investmentsController.delete);
 investmentsRouter.post('/:id/entry', validate(createEntrySchema), investmentsController.addEntry);
+investmentsRouter.get('/:id/entries', investmentsController.listEntries);
 investmentsRouter.get(
   '/:id/projection',
   validate(projectionQuerySchema, 'query'),

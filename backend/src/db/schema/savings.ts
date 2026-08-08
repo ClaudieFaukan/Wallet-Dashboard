@@ -29,3 +29,16 @@ export const savingsMilestones = pgTable('savings_milestones', {
   reachedAt: timestamp('reached_at', { withTimezone: true }),
   ...timestamps,
 });
+
+// Individual deposit events, so the frontend can render a mini timeline per
+// goal — savingsGoals.currentAmount only ever stores the running total.
+export const savingsDeposits = pgTable('savings_deposits', {
+  id: id(),
+  goalId: uuid('goal_id')
+    .notNull()
+    .references(() => savingsGoals.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  date: timestamp('date', { withTimezone: true }).notNull().defaultNow(),
+  notes: text('notes'),
+  ...timestamps,
+});

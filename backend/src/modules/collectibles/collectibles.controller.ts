@@ -13,6 +13,10 @@ import type { CollectiblesService } from './collectibles.service.js';
 export class CollectiblesController {
   constructor(private readonly collectiblesService: CollectiblesService) {}
 
+  getConfig: RequestHandler = (_req, res) => {
+    res.json({ success: true, data: this.collectiblesService.getConfig() });
+  };
+
   list: RequestHandler = async (req, res, next) => {
     try {
       const { user } = req as AuthenticatedRequest;

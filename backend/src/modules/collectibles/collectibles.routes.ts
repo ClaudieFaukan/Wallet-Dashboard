@@ -20,6 +20,7 @@ export const collectiblesRouter = Router();
 
 collectiblesRouter.use(requireAuth);
 // Static routes must be registered before the '/:id' catch-all.
+collectiblesRouter.get('/config', collectiblesController.getConfig);
 collectiblesRouter.post('/sync-prices', collectiblesController.syncPrices);
 collectiblesRouter.get(
   '/performance',

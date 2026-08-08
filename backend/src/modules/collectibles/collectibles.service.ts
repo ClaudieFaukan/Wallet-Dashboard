@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
+import { env } from '../../config/env.js';
 import { getPriceProvider } from '../../integrations/collectibles/price-router.service.js';
 import { searchTcgdexCards } from '../../integrations/collectibles/tcgdex.provider.js';
 import { AppError } from '../../shared/utils/AppError.js';
@@ -19,6 +20,13 @@ function sleep(ms: number): Promise<void> {
 
 export class CollectiblesService {
   constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+
+  getConfig() {
+    return {
+      pokemonPriceTrackerConfigured: Boolean(env.POKEMON_PRICE_TRACKER_API_KEY),
+      poketraceConfigured: Boolean(env.POKETRACE_API_KEY),
+    };
+  }
 
   async list(userId: string, type?: 'card' | 'sealed') {
     const conditions = [eq(schema.collectibleItems.userId, userId)];

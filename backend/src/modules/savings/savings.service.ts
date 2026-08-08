@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
 import { AppError } from '../../shared/utils/AppError.js';
@@ -61,8 +61,19 @@ export class SavingsService {
       .returning();
     if (!updated) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to update savings goal');
 
+    await this.db.insert(schema.savingsDeposits).values({ goalId: id, amount });
+
     const reachedMilestones = await this.checkMilestones(updated);
     return { goal: updated, reachedMilestones };
+  }
+
+  async listDeposits(userId: string, id: string) {
+    await this.getById(userId, id);
+    return this.db
+      .select()
+      .from(schema.savingsDeposits)
+      .where(eq(schema.savingsDeposits.goalId, id))
+      .orderBy(asc(schema.savingsDeposits.date));
   }
 
   private async checkMilestones(goal: SavingsGoal) {
