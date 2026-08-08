@@ -62,7 +62,7 @@ npm run package:mac  # build + package .dmg
 - [x] Étape 3 — Backend core (env, middlewares, module `auth` register/login/refresh/logout) + IPC Touch ID côté Electron (main + preload)
 - [x] Étape 4 — Modules `accounts` + `transactions` (CRUD, import CSV multi-format, `balance-history`, stats ; sync Revolut stubbé en attendant des identifiants) + module `categories` minimal
 - [x] Étape 5 — Module `budget` (génération auto mensuelle par copie du mois précédent, `actual_amount` dynamique, vue annuelle avec variance)
-- [ ] Étape 6 — Module `savings`
+- [x] Étape 6 — Module `savings` (CRUD, objectifs préconfigurés à l'inscription, dépôts + jalons automatiques à 25/50/75/100%)
 - [ ] Étape 7 — Module `investments` (projections DCA)
 - [ ] Étape 8 — Module `crypto` (Etherscan / Solana / Crypto.com)
 - [ ] Étape 9 — Module `collectibles` (Pokémon TCG API)

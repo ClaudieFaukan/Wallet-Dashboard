@@ -37,6 +37,8 @@ export class AuthService {
       .returning();
     if (!user) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to create user');
 
+    await this.createDefaultSavingsGoals(user.id);
+
     return this.issueTokens(user.id, user.email);
   }
 
@@ -90,6 +92,31 @@ export class AuthService {
       .where(
         and(eq(schema.refreshTokens.tokenHash, tokenHash), isNull(schema.refreshTokens.revokedAt)),
       );
+  }
+
+  /**
+   * Base.md: "Objectifs préconfigurés à la création du compte", target = avg
+   * monthly expense over the last 3 months × 6 or × 12. A brand-new user has
+   * no transaction history yet, so both targets are necessarily 0 for now —
+   * there is no recompute endpoint yet to refresh them once transactions exist.
+   */
+  private async createDefaultSavingsGoals(userId: string): Promise<void> {
+    await this.db.insert(schema.savingsGoals).values([
+      {
+        userId,
+        name: 'Épargne de précaution 6 mois',
+        type: 'emergency_fund',
+        targetAmount: 0,
+        currentAmount: 0,
+      },
+      {
+        userId,
+        name: 'Épargne de précaution 1 an',
+        type: 'emergency_fund',
+        targetAmount: 0,
+        currentAmount: 0,
+      },
+    ]);
   }
 
   private async issueTokens(userId: string, email: string): Promise<AuthTokens> {
