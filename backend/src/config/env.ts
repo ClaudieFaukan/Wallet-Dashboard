@@ -17,6 +17,11 @@ const envSchema = z.object({
   REVOLUT_CLIENT_ID: z.string().optional(),
   REVOLUT_CLIENT_SECRET: z.string().optional(),
   REVOLUT_ENVIRONMENT: z.enum(['sandbox', 'production']).default('sandbox'),
+
+  ETHERSCAN_API_KEY: z.string().optional(),
+  SOLANA_RPC_URL: z.string().default('https://api.mainnet-beta.solana.com'),
+  CRYPTO_COM_API_KEY: z.string().optional(),
+  CRYPTO_COM_API_SECRET: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
