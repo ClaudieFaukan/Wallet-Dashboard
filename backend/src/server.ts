@@ -1,8 +1,8 @@
 import { createApp } from './app.js';
+import { env } from './config/env.js';
 
-const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 const app = createApp();
 
-app.listen(port, () => {
-  console.log(`backend listening on port ${port}`);
+app.listen(env.PORT, () => {
+  console.log(`backend listening on port ${env.PORT}`);
 });
