@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Upload } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
@@ -30,7 +30,7 @@ export function AccountCard({ account }: { account: Account }) {
     });
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     importCsv.mutate(
