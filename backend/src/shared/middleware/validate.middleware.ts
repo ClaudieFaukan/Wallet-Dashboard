@@ -11,7 +11,9 @@ export function validate(schema: ZodType, target: ValidationTarget = 'body'): Re
       next(new AppError(400, 'VALIDATION_ERROR', 'Invalid request data', result.error.issues));
       return;
     }
-    req[target] = result.data;
+    // Express 5 exposes req.query as a getter-only property, so a plain
+    // assignment throws — redefine it instead (works for body/params too).
+    Object.defineProperty(req, target, { value: result.data, configurable: true, writable: true });
     next();
   };
 }

@@ -9,7 +9,11 @@ export default defineConfig({
       JWT_EXPIRES_IN: '15m',
       REFRESH_TOKEN_EXPIRES_IN: '7d',
       CORS_ORIGIN: 'http://localhost:5173',
+      ENCRYPTION_KEY: '156a389103a9d4053bacdebc6f9dd41933c9a820a5209ffd5c52b55191eefbf0',
     },
     setupFiles: ['./tests/setup.ts'],
+    // All test files share one real Postgres DB truncated between tests —
+    // running files in parallel races the truncation against other files.
+    fileParallelism: false,
   },
 });

@@ -3,7 +3,10 @@ import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
 import { env } from './config/env.js';
+import { accountsRouter } from './modules/accounts/accounts.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
+import { categoriesRouter } from './modules/categories/categories.routes.js';
+import { transactionsRouter } from './modules/transactions/transactions.routes.js';
 import { errorHandler } from './shared/middleware/errorHandler.middleware.js';
 
 export function createApp() {
@@ -21,6 +24,9 @@ export function createApp() {
   });
 
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/accounts', accountsRouter);
+  app.use('/api/v1/categories', categoriesRouter);
+  app.use('/api/v1/transactions', transactionsRouter);
 
   app.use(errorHandler);
 
