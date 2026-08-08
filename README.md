@@ -65,7 +65,7 @@ npm run package:mac  # build + package .dmg
 - [x] Étape 6 — Module `savings` (CRUD, objectifs préconfigurés à l'inscription, dépôts + jalons automatiques à 25/50/75/100%)
 - [x] Étape 7 — Module `investments` (CRUD, entrées DCA, projection avec formule intérêts composés, jalons 20K/50K/100K/1M cross-comptes)
 - [x] Étape 8 — Module `crypto` (CRUD wallets, sync Solana + Etherscan réels (RPC public / API V2 + CoinGecko), Crypto.com stubbé — signature vérifiée mais échoue en live sur le compte de l'utilisateur, à investiguer côté Crypto.com —, historique de snapshots)
-- [ ] Étape 9 — Module `collectibles` (Pokémon TCG API)
+- [x] Étape 9 — Module `collectibles` (architecture revue en cours d'étape : TCGdex gratuit pour les cartes singles + mode manuel/providers optionnels pour le scellé, remplace la Pokémon TCG API désormais payante ; CRUD, prix manuel, sync-prices, performance, recherche TCGdex, cron 3h)
 - [ ] Étape 10 — Frontend (design system + pages)
 - [ ] Étape 11 — Electron shell (packaging, CSP)
 - [ ] Étape 12 — Couverture de tests

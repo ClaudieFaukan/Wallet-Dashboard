@@ -22,6 +22,9 @@ const envSchema = z.object({
   SOLANA_RPC_URL: z.string().default('https://api.mainnet-beta.solana.com'),
   CRYPTO_COM_API_KEY: z.string().optional(),
   CRYPTO_COM_API_SECRET: z.string().optional(),
+
+  POKEMON_PRICE_TRACKER_API_KEY: z.string().optional(),
+  POKETRACE_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

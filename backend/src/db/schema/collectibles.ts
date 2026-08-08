@@ -1,26 +1,71 @@
-import { date, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { date, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { id, timestamps } from './_helpers.js';
 import { users } from './users.js';
 
-export const collectibleTypeEnum = pgEnum('collectible_type', ['pokemon_card']);
+export const collectibleItemTypeEnum = pgEnum('collectible_item_type', ['card', 'sealed']);
+export const collectiblePriceSourceEnum = pgEnum('collectible_price_source', [
+  'tcgdex',
+  'manual',
+  'pokemonpricetracker',
+  'poketrace',
+]);
+export const collectibleConditionEnum = pgEnum('collectible_condition', [
+  'NM',
+  'LP',
+  'MP',
+  'HP',
+  'DMG',
+]);
+export const collectibleSealedTypeEnum = pgEnum('collectible_sealed_type', [
+  'booster_box',
+  'etb',
+  'blister',
+  'collection',
+  'display',
+]);
+export const collectibleSealedLanguageEnum = pgEnum('collectible_sealed_language', [
+  'FR',
+  'EN',
+  'JP',
+]);
+
+export type CollectiblePriceSource = (typeof collectiblePriceSourceEnum.enumValues)[number];
+export type CollectiblePriceSnapshotSource =
+  (typeof collectiblePriceSnapshotSourceEnum.enumValues)[number];
 
 export const collectibleItems = pgTable('collectible_items', {
   id: id(),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  type: collectibleTypeEnum('type').notNull().default('pokemon_card'),
+  itemType: collectibleItemTypeEnum('item_type').notNull(),
   name: text('name').notNull(),
   setName: text('set_name'),
-  cardNumber: text('card_number'),
-  condition: text('condition'),
-  purchasePrice: integer('purchase_price').notNull(),
-  purchaseDate: date('purchase_date').notNull(),
-  tcgProductId: text('tcg_product_id'),
   imageUrl: text('image_url'),
   notes: text('notes'),
+  purchasePrice: integer('purchase_price').notNull(),
+  purchaseDate: date('purchase_date').notNull(),
+  priceSource: collectiblePriceSourceEnum('price_source').notNull().default('manual'),
+
+  // Card-only fields (item_type = 'card')
+  cardNumber: text('card_number'),
+  condition: collectibleConditionEnum('condition'),
+  tcgdexId: text('tcgdex_id'),
+
+  // Sealed-only fields (item_type = 'sealed')
+  sealedType: collectibleSealedTypeEnum('sealed_type'),
+  sealedLanguage: collectibleSealedLanguageEnum('sealed_language'),
+
   ...timestamps,
 });
+
+export const collectiblePriceSnapshotSourceEnum = pgEnum('collectible_price_snapshot_source', [
+  'tcgdex_cardmarket',
+  'tcgdex_tcgplayer',
+  'pokemonpricetracker',
+  'poketrace',
+  'manual',
+]);
 
 export const collectiblePriceSnapshots = pgTable('collectible_price_snapshots', {
   id: id(),
@@ -28,7 +73,9 @@ export const collectiblePriceSnapshots = pgTable('collectible_price_snapshots', 
     .notNull()
     .references(() => collectibleItems.id, { onDelete: 'cascade' }),
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
-  marketPrice: integer('market_price').notNull(),
-  source: text('source'),
+  marketPriceEur: integer('market_price_eur'),
+  marketPriceUsd: integer('market_price_usd'),
+  source: collectiblePriceSnapshotSourceEnum('source').notNull(),
+  rawData: jsonb('raw_data'),
   ...timestamps,
 });
