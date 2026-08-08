@@ -1,5 +1,6 @@
 node_modules
 base.md
+backend/src/db/migrations
 dist
 dist-electron
 build

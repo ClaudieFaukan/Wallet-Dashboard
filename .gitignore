@@ -9,4 +9,3 @@ release/
 .DS_Store
 coverage/
 .vite/
-drizzle/meta/

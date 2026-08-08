@@ -33,7 +33,7 @@ shared/     # Types TypeScript partagés backend/frontend
 
 ```bash
 npm install
-cp backend/.env.example backend/.env   # à créer à l'étape "backend core"
+cp backend/.env.example backend/.env   # renseigner DATABASE_URL
 npm run db:migrate
 ```
 
@@ -51,8 +51,8 @@ npm run package:mac  # build + package .dmg
 ## État d'avancement
 
 - [x] Étape 1 — Setup monorepo (workspaces npm, tsconfig strict, ESLint/Prettier, scaffolds des 4 packages)
-- [ ] Étape 2 — Schéma Drizzle + migration initiale
-- [ ] Étape 3 — Backend core (env, middlewares, module `auth`)
+- [x] Étape 2 — Schéma Drizzle (16 tables) + migration initiale
+- [ ] Étape 3 — Backend core (env complet, middlewares, module `auth`)
 - [ ] Étape 4 — Modules `accounts` + `transactions` (CRUD, import CSV, sync Revolut)
 - [ ] Étape 5 — Module `budget`
 - [ ] Étape 6 — Module `savings`
