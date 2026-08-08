@@ -63,7 +63,7 @@ npm run package:mac  # build + package .dmg
 - [x] Étape 4 — Modules `accounts` + `transactions` (CRUD, import CSV multi-format, `balance-history`, stats ; sync Revolut stubbé en attendant des identifiants) + module `categories` minimal
 - [x] Étape 5 — Module `budget` (génération auto mensuelle par copie du mois précédent, `actual_amount` dynamique, vue annuelle avec variance)
 - [x] Étape 6 — Module `savings` (CRUD, objectifs préconfigurés à l'inscription, dépôts + jalons automatiques à 25/50/75/100%)
-- [ ] Étape 7 — Module `investments` (projections DCA)
+- [x] Étape 7 — Module `investments` (CRUD, entrées DCA, projection avec formule intérêts composés, jalons 20K/50K/100K/1M cross-comptes)
 - [ ] Étape 8 — Module `crypto` (Etherscan / Solana / Crypto.com)
 - [ ] Étape 9 — Module `collectibles` (Pokémon TCG API)
 - [ ] Étape 10 — Frontend (design system + pages)
