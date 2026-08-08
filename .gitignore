@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-electron/
+build/
+release/
+*.log
+.env
+.env.local
+.DS_Store
+coverage/
+.vite/
+drizzle/meta/

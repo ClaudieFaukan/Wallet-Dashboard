@@ -1,0 +1,39 @@
+{
+  "name": "wallet-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "electron",
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"npm run dev:electron\"",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:electron": "wait-on http://localhost:3001/api/v1/health && npm run dev --workspace=electron",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend && npm run build --workspace=electron",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:studio": "npm run db:studio --workspace=backend",
+    "test": "npm run test --workspace=backend",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "package:mac": "npm run build && electron-builder --mac"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.66.0",
+    "@typescript-eslint/parser": "^8.66.0",
+    "concurrently": "^10.0.4",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.9.0",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "wait-on": "^9.1.0"
+  }
+}

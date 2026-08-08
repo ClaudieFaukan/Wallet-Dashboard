@@ -1,0 +1,8 @@
+node_modules
+base.md
+dist
+dist-electron
+build
+release
+coverage
+package-lock.json
