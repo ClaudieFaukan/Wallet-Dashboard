@@ -6,14 +6,14 @@ La spec complète du projet est dans [`base.md`](./base.md).
 
 ## Stack
 
-| Couche        | Techno                                                                   |
-| ------------- | ------------------------------------------------------------------------ |
-| Desktop shell | Electron                                                                 |
-| Backend       | Node.js 20+, TypeScript strict, Express 5, PostgreSQL 16 via Drizzle ORM |
-| Frontend      | React 18, Vite, TailwindCSS v4, Recharts, TanStack Query, Zustand        |
-| Auth          | JWT (access 15min + refresh 7j en cookie httpOnly)                       |
-| Packaging     | electron-builder (.dmg Mac)                                              |
-| Tests         | Vitest + Supertest                                                       |
+| Couche        | Techno                                                                             |
+| ------------- | ---------------------------------------------------------------------------------- |
+| Desktop shell | Electron                                                                           |
+| Backend       | Node.js 20+, TypeScript strict, Express 5, PostgreSQL 16 via Drizzle ORM           |
+| Frontend      | React 18, Vite, TailwindCSS v4, Recharts, TanStack Query, Zustand                  |
+| Auth          | JWT (access 15min + refresh 7j en cookie httpOnly) + déverrouillage Touch ID (Mac) |
+| Packaging     | electron-builder (.dmg Mac)                                                        |
+| Tests         | Vitest + Supertest                                                                 |
 
 ## Structure
 
@@ -33,8 +33,15 @@ shared/     # Types TypeScript partagés backend/frontend
 
 ```bash
 npm install
-cp backend/.env.example backend/.env   # renseigner DATABASE_URL
+cp backend/.env.example backend/.env   # renseigner DATABASE_URL, JWT_SECRET (min 64 chars)
 npm run db:migrate
+```
+
+Les tests backend utilisent une base Postgres séparée (`vitest.config.ts`, DB `wallet_dashboard_test`) pour ne jamais toucher aux données de dev — la créer et la migrer une fois :
+
+```bash
+createdb wallet_dashboard_test
+DATABASE_URL=postgresql://<user>@localhost:5432/wallet_dashboard_test npm run db:migrate --workspace=backend
 ```
 
 ## Scripts
@@ -52,7 +59,7 @@ npm run package:mac  # build + package .dmg
 
 - [x] Étape 1 — Setup monorepo (workspaces npm, tsconfig strict, ESLint/Prettier, scaffolds des 4 packages)
 - [x] Étape 2 — Schéma Drizzle (16 tables) + migration initiale
-- [ ] Étape 3 — Backend core (env complet, middlewares, module `auth`)
+- [x] Étape 3 — Backend core (env, middlewares, module `auth` register/login/refresh/logout) + IPC Touch ID côté Electron (main + preload)
 - [ ] Étape 4 — Modules `accounts` + `transactions` (CRUD, import CSV, sync Revolut)
 - [ ] Étape 5 — Module `budget`
 - [ ] Étape 6 — Module `savings`

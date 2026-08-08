@@ -1,5 +1,21 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain, systemPreferences } from 'electron';
 import path from 'node:path';
+
+function registerTouchIdHandlers() {
+  ipcMain.handle('touch-id:is-available', () => {
+    return process.platform === 'darwin' && systemPreferences.canPromptTouchID();
+  });
+
+  ipcMain.handle('touch-id:prompt', async (_event, reason: string) => {
+    if (process.platform !== 'darwin') return false;
+    try {
+      await systemPreferences.promptTouchID(reason);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -21,7 +37,10 @@ function createWindow() {
   }
 }
 
-void app.whenReady().then(createWindow);
+void app.whenReady().then(() => {
+  registerTouchIdHandlers();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
