@@ -8,14 +8,14 @@ interface TimePoint {
   value: number;
 }
 
-function dayKey(iso: string): string {
+export function dayKey(iso: string): string {
   return iso.slice(0, 10);
 }
 
 /** Forward-fills a sparse series of {date, value} points onto every day in
  * `days` (oldest first), carrying the last known value forward and using 0
  * before the first known point. */
-function forwardFill(points: TimePoint[], days: string[]): number[] {
+export function forwardFill(points: TimePoint[], days: string[]): number[] {
   const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
   let idx = 0;
   let current = 0;
@@ -38,7 +38,7 @@ export function bucketMonthly(days: string[], values: number[]): { month: string
   return Array.from(byMonth.entries()).map(([month, value]) => ({ month, value }));
 }
 
-function lastNDays(n: number): string[] {
+export function lastNDays(n: number): string[] {
   const days: string[] = [];
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
