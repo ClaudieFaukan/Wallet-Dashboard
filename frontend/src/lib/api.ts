@@ -164,6 +164,7 @@ export const api = {
     list: () => unwrap(client.get<ApiResponse<Category[]>>('/categories')),
     create: (input: CreateCategoryInput) =>
       unwrap(client.post<ApiResponse<Category>>('/categories', input)),
+    delete: (id: string) => client.delete(`/categories/${id}`),
   },
 
   transactions: {

@@ -7,6 +7,7 @@ import * as schema from '../../db/schema/index.js';
 import { AppError } from '../../shared/utils/AppError.js';
 import { parseDurationMs } from '../../shared/utils/duration.js';
 import { env } from '../../config/env.js';
+import { DEFAULT_CATEGORIES } from '../../db/seeds/categories.js';
 import type { LoginInput, RegisterInput } from './auth.schema.js';
 
 const BCRYPT_COST = 12;
@@ -38,6 +39,7 @@ export class AuthService {
     if (!user) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to create user');
 
     await this.createDefaultSavingsGoals(user.id);
+    await this.createDefaultCategories(user.id);
 
     return this.issueTokens(user.id, user.email);
   }
@@ -117,6 +119,21 @@ export class AuthService {
         currentAmount: 0,
       },
     ]);
+  }
+
+  /** FEAT-01 (docs/feat1.md): default expense/income categories seeded at
+   * registration, `isDefault: true` so they can't be deleted later. */
+  private async createDefaultCategories(userId: string): Promise<void> {
+    await this.db.insert(schema.categories).values(
+      DEFAULT_CATEGORIES.map((c) => ({
+        userId,
+        name: c.name,
+        type: c.type,
+        color: c.color,
+        icon: c.icon,
+        isDefault: true,
+      })),
+    );
   }
 
   private async issueTokens(userId: string, email: string): Promise<AuthTokens> {

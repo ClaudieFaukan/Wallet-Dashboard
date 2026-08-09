@@ -28,4 +28,14 @@ export class CategoriesController {
       next(err);
     }
   };
+
+  delete: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      await this.categoriesService.delete(user.id, req.params.id as string);
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -14,3 +14,4 @@ export const categoriesRouter = Router();
 categoriesRouter.use(requireAuth);
 categoriesRouter.get('/', categoriesController.list);
 categoriesRouter.post('/', validate(createCategorySchema), categoriesController.create);
+categoriesRouter.delete('/:id', categoriesController.delete);
