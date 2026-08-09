@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { PiggyBank, Plus } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ProgressBar } from '../../../components/charts/ProgressBar';
 import { chartColors } from '../../../components/charts/chartTheme';
-import { formatCents } from '../../../lib/format';
+import { formatCents, formatMonth } from '../../../lib/format';
 import type { BudgetCurrentView, Category } from '../../../types/api';
 import { useAddBudgetLine, useUpdateBudgetLine } from '../hooks/useBudget';
 
@@ -34,10 +35,23 @@ interface MonthlyBudgetViewProps {
 
 export function MonthlyBudgetView({ budget, categories }: MonthlyBudgetViewProps) {
   const [newCategoryId, setNewCategoryId] = useState('');
+  const [bulkAdding, setBulkAdding] = useState(false);
   const addLine = useAddBudgetLine();
 
   const usedCategoryIds = new Set(budget.lines.map((l) => l.categoryId));
   const availableCategories = categories.filter((c) => !usedCategoryIds.has(c.id));
+  const availableExpenseCategories = availableCategories.filter((c) => c.type === 'expense');
+
+  async function handleBulkAdd() {
+    setBulkAdding(true);
+    try {
+      for (const category of availableExpenseCategories) {
+        await addLine.mutateAsync({ categoryId: category.id, plannedAmount: 0 });
+      }
+    } finally {
+      setBulkAdding(false);
+    }
+  }
 
   return (
     <Card>
@@ -47,27 +61,50 @@ export function MonthlyBudgetView({ budget, categories }: MonthlyBudgetViewProps
         </h3>
       </div>
 
-      <div className="space-y-4">
-        {budget.lines.map((line) => (
-          <div key={line.id} className="flex items-center gap-4">
-            <span className="w-32 shrink-0 text-sm text-text-primary">{line.categoryName}</span>
-            <div className="flex-1">
-              <ProgressBar
-                value={line.actualAmount}
-                max={Math.max(line.plannedAmount, 1)}
-                color={line.actualAmount > line.plannedAmount ? chartColors.accent3 : chartColors.accent}
-              />
-            </div>
-            <span className="w-20 shrink-0 text-right font-mono text-xs text-text-muted">
-              {formatCents(line.actualAmount)}
-            </span>
-            <PlannedAmountInput lineId={line.id} plannedAmount={line.plannedAmount} />
+      {budget.lines.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-center">
+          <PiggyBank size={32} className="text-text-muted" />
+          <div>
+            <p className="text-sm font-medium text-text-primary">
+              Aucun budget pour {formatMonth(budget.month)}
+            </p>
+            <p className="mt-1 text-sm text-text-muted">
+              Commencez par ajouter vos catégories de dépenses.
+            </p>
           </div>
-        ))}
-        {budget.lines.length === 0 && (
-          <p className="text-sm text-text-muted">Aucune ligne de budget ce mois-ci.</p>
-        )}
-      </div>
+          {availableExpenseCategories.length > 0 && (
+            <Button
+              size="sm"
+              icon={<Plus size={14} />}
+              onClick={handleBulkAdd}
+              disabled={bulkAdding}
+            >
+              {bulkAdding
+                ? 'Création…'
+                : `Créer le budget de ${formatMonth(budget.month)}`}
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {budget.lines.map((line) => (
+            <div key={line.id} className="flex items-center gap-4">
+              <span className="w-32 shrink-0 text-sm text-text-primary">{line.categoryName}</span>
+              <div className="flex-1">
+                <ProgressBar
+                  value={line.actualAmount}
+                  max={Math.max(line.plannedAmount, 1)}
+                  color={line.actualAmount > line.plannedAmount ? chartColors.accent3 : chartColors.accent}
+                />
+              </div>
+              <span className="w-20 shrink-0 text-right font-mono text-xs text-text-muted">
+                {formatCents(line.actualAmount)}
+              </span>
+              <PlannedAmountInput lineId={line.id} plannedAmount={line.plannedAmount} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {availableCategories.length > 0 && (
         <div className="mt-5 flex items-end gap-2 border-t border-border pt-4">
