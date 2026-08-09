@@ -11,72 +11,58 @@ import {
   Wallet2,
 } from 'lucide-react';
 import { useAuthStore, getEmailFromToken } from '../../store/authStore';
-import { NetWorthFooter } from './NetWorthFooter';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/accounts', label: 'Comptes', icon: Wallet },
+  { to: '/', label: 'Synthèse', icon: LayoutDashboard, end: true },
+  { to: '/accounts', label: 'Patrimoine', icon: Wallet },
   { to: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
   { to: '/budget', label: 'Budget', icon: PiggyBank },
   { to: '/savings', label: 'Épargne', icon: Wallet2 },
-  { to: '/investments', label: 'Investissements', icon: TrendingUp },
+  { to: '/investments', label: 'Investir', icon: TrendingUp },
   { to: '/crypto', label: 'Crypto', icon: Bitcoin },
   { to: '/collectibles', label: 'Collectibles', icon: Sparkles },
 ];
 
+const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
+  `flex items-center gap-3 rounded-r-lg py-2 pl-[10px] pr-3 -ml-px border-l-2 text-sm font-medium transition-colors ${
+    isActive
+      ? 'border-accent-gold bg-bg-elevated text-text-primary'
+      : 'border-transparent text-text-muted hover:bg-bg-surface hover:text-text-secondary'
+  }`;
+
 export function Sidebar() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const email = getEmailFromToken(accessToken);
+  const initial = email ? email[0]!.toUpperCase() : '?';
 
   return (
-    <aside className="flex h-screen w-[220px] flex-col border-r border-border bg-bg-surface">
-      <div className="flex items-center gap-2 px-4 py-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-white">
-          W
-        </div>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-text-primary">Wallet Dashboard</p>
-          {email && <p className="truncate text-xs text-text-muted">{email}</p>}
-        </div>
+    <aside className="flex h-screen w-[200px] shrink-0 flex-col bg-bg-sidebar">
+      <div className="px-6 py-6">
+        <p className="text-sm font-semibold tracking-tight text-text-primary">finance</p>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3">
+      <nav className="flex-1 space-y-0.5 px-3">
         {navItems.map(({ to, label, icon: Icon, end }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-accent/10 text-accent'
-                  : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary'
-              }`
-            }
-          >
-            <Icon size={17} />
+          <NavLink key={to} to={to} end={end} className={navLinkClassName}>
+            <Icon size={18} />
             {label}
           </NavLink>
         ))}
       </nav>
 
-      <div className="space-y-1 px-3 pb-2">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              isActive
-                ? 'bg-accent/10 text-accent'
-                : 'text-text-muted hover:bg-bg-elevated hover:text-text-primary'
-            }`
-          }
-        >
-          <Settings size={17} />
-          Réglages
+      <div className="space-y-0.5 px-3 pb-3">
+        <NavLink to="/settings" className={navLinkClassName}>
+          <Settings size={18} />
+          Paramètres
         </NavLink>
       </div>
 
-      <NetWorthFooter />
+      <div className="flex items-center gap-2 border-t border-border px-4 py-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-sm font-semibold text-text-primary">
+          {initial}
+        </div>
+        {email && <p className="truncate text-xs text-text-secondary">{email}</p>}
+      </div>
     </aside>
   );
 }

@@ -21,8 +21,8 @@ export function AccountDetailPage() {
       <div className="space-y-6 p-8">
         {account && (
           <Card>
-            <p className="text-xs text-text-muted">Solde actuel</p>
-            <p className="mt-1 font-mono text-2xl font-semibold text-text-primary">
+            <p className="text-sm text-text-secondary">Solde actuel</p>
+            <p className="mt-1 font-mono text-3xl font-bold tracking-[-0.03em] text-text-primary">
               {formatCents(account.balance, account.currency)}
             </p>
           </Card>

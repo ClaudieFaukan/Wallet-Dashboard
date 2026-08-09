@@ -1,5 +1,4 @@
 import {
-  CartesianGrid,
   Legend,
   Line,
   LineChart,
@@ -49,7 +48,6 @@ export function LineChartCard({
       {title && <h3 className="mb-4 text-sm font-medium text-text-muted">{title}</h3>}
       <ResponsiveContainer width="100%" height={height}>
         <LineChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid stroke={chartColors.border} strokeDasharray="3 3" vertical={false} />
           <XAxis
             dataKey={xKey}
             stroke={chartColors.textMuted}

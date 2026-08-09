@@ -6,15 +6,15 @@ interface TabsProps<T extends string> {
 
 export function Tabs<T extends string>({ tabs, value, onChange }: TabsProps<T>) {
   return (
-    <div className="inline-flex rounded-lg border border-border bg-bg-surface p-1">
+    <div className="inline-flex gap-1 rounded-lg p-1">
       {tabs.map((tab) => (
         <button
           key={tab.value}
           onClick={() => onChange(tab.value)}
-          className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+          className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${
             value === tab.value
-              ? 'bg-accent text-white'
-              : 'text-text-muted hover:text-text-primary'
+              ? 'bg-bg-elevated text-text-primary'
+              : 'text-text-muted hover:text-text-secondary'
           }`}
         >
           {tab.label}
