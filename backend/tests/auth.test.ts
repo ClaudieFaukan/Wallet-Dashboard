@@ -60,6 +60,31 @@ describe('POST /api/v1/auth/login', () => {
   });
 });
 
+describe('remember me', () => {
+  it('issues a session cookie (no Expires) when rememberMe is not set', async () => {
+    await request(app).post('/api/v1/auth/register').send(validUser);
+    const res = await request(app)
+      .post('/api/v1/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+
+    const cookie = res.headers['set-cookie']?.[0] as string;
+    expect(cookie).not.toMatch(/Expires=/i);
+  });
+
+  it('issues a persistent cookie when rememberMe is true, preserved across refresh', async () => {
+    await request(app).post('/api/v1/auth/register').send(validUser);
+    const agent = request.agent(app);
+    const loginRes = await agent
+      .post('/api/v1/auth/login')
+      .send({ email: validUser.email, password: validUser.password, rememberMe: true });
+
+    expect(loginRes.headers['set-cookie']?.[0]).toMatch(/Expires=/i);
+
+    const refreshRes = await agent.post('/api/v1/auth/refresh');
+    expect(refreshRes.headers['set-cookie']?.[0]).toMatch(/Expires=/i);
+  });
+});
+
 describe('POST /api/v1/auth/refresh and /logout', () => {
   it('refreshes the access token using the refresh cookie', async () => {
     const agent = request.agent(app);

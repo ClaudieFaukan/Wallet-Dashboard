@@ -10,6 +10,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const navigate = useNavigate();
 
   const login = useLogin();
@@ -20,7 +21,7 @@ export function LoginPage() {
     e.preventDefault();
     const onSuccess = () => navigate('/', { replace: true });
     if (mode === 'login') {
-      login.mutate({ email, password }, { onSuccess });
+      login.mutate({ email, password, rememberMe }, { onSuccess });
     } else {
       register.mutate({ email, password, name }, { onSuccess });
     }
@@ -60,6 +61,18 @@ export function LoginPage() {
             minLength={8}
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           />
+
+          {mode === 'login' && (
+            <label className="flex items-center gap-2 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="accent-accent-gold"
+              />
+              Se souvenir de moi
+            </label>
+          )}
 
           {mutation.isError && (
             <p className="text-xs text-accent-3">{getErrorMessage(mutation.error)}</p>

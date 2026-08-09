@@ -5,7 +5,8 @@ import { useAuthStore } from '../../../store/authStore';
 export function useLogin() {
   const setToken = useAuthStore((s) => s.setToken);
   return useMutation({
-    mutationFn: (input: { email: string; password: string }) => api.auth.login(input),
+    mutationFn: (input: { email: string; password: string; rememberMe?: boolean }) =>
+      api.auth.login(input),
     onSuccess: (data) => setToken(data.accessToken),
   });
 }

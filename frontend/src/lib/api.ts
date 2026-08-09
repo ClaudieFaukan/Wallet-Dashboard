@@ -126,7 +126,7 @@ export function getErrorMessage(error: unknown): string {
 
 export const api = {
   auth: {
-    login: (input: { email: string; password: string }) =>
+    login: (input: { email: string; password: string; rememberMe?: boolean }) =>
       unwrap(client.post<ApiResponse<{ accessToken: string }>>('/auth/login', input)),
     register: (input: { email: string; password: string; name: string }) =>
       unwrap(client.post<ApiResponse<{ accessToken: string }>>('/auth/register', input)),

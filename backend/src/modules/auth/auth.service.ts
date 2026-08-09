@@ -11,6 +11,7 @@ import { DEFAULT_CATEGORIES } from '../../db/seeds/categories.js';
 import type { LoginInput, RegisterInput } from './auth.schema.js';
 
 const BCRYPT_COST = 12;
+const REMEMBER_ME_EXPIRES_IN = '30d';
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -20,6 +21,7 @@ export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   refreshTokenExpiresAt: Date;
+  rememberMe: boolean;
 }
 
 export class AuthService {
@@ -54,7 +56,7 @@ export class AuthService {
     const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) throw new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
 
-    return this.issueTokens(user.id, user.email);
+    return this.issueTokens(user.id, user.email, input.rememberMe);
   }
 
   async refresh(rawToken: string | undefined): Promise<AuthTokens> {
@@ -82,7 +84,7 @@ export class AuthService {
     const [user] = await this.db.select().from(schema.users).where(eq(schema.users.id, row.userId));
     if (!user) throw new AppError(401, 'UNAUTHORIZED', 'User no longer exists');
 
-    return this.issueTokens(user.id, user.email);
+    return this.issueTokens(user.id, user.email, row.rememberMe);
   }
 
   async logout(rawToken: string | undefined): Promise<void> {
@@ -136,22 +138,27 @@ export class AuthService {
     );
   }
 
-  private async issueTokens(userId: string, email: string): Promise<AuthTokens> {
+  private async issueTokens(
+    userId: string,
+    email: string,
+    rememberMe = false,
+  ): Promise<AuthTokens> {
     const accessToken = jwt.sign({ sub: userId, email }, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
     });
 
     const refreshToken = crypto.randomBytes(64).toString('hex');
     const refreshTokenExpiresAt = new Date(
-      Date.now() + parseDurationMs(env.REFRESH_TOKEN_EXPIRES_IN),
+      Date.now() + parseDurationMs(rememberMe ? REMEMBER_ME_EXPIRES_IN : env.REFRESH_TOKEN_EXPIRES_IN),
     );
 
     await this.db.insert(schema.refreshTokens).values({
       userId,
       tokenHash: hashToken(refreshToken),
       expiresAt: refreshTokenExpiresAt,
+      rememberMe,
     });
 
-    return { accessToken, refreshToken, refreshTokenExpiresAt };
+    return { accessToken, refreshToken, refreshTokenExpiresAt, rememberMe };
   }
 }

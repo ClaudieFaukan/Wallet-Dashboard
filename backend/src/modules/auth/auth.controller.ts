@@ -1,16 +1,23 @@
 import type { Request, RequestHandler, Response } from 'express';
 import { env } from '../../config/env.js';
-import type { AuthService } from './auth.service.js';
+import type { AuthService, AuthTokens } from './auth.service.js';
 import type { LoginInput, RegisterInput } from './auth.schema.js';
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
 
-function setRefreshCookie(res: Response, token: string, expiresAt: Date): void {
-  res.cookie(REFRESH_COOKIE_NAME, token, {
+/** When `rememberMe` is false, the cookie is issued with no `expires` at
+ * all — a browser session cookie, cleared when the browser closes — instead
+ * of the 7d/30d persistent cookie. This achieves FEAT-03's "not remembered =
+ * expires at session close" without ever exposing the refresh token to JS
+ * (it stays httpOnly; sessionStorage was the spec's literal suggestion but
+ * would have meant reading/writing it from the frontend, which defeats the
+ * httpOnly protection this project deliberately chose at auth setup time). */
+function setRefreshCookie(res: Response, tokens: AuthTokens): void {
+  res.cookie(REFRESH_COOKIE_NAME, tokens.refreshToken, {
     httpOnly: true,
     secure: env.NODE_ENV === 'production',
     sameSite: 'strict',
-    expires: expiresAt,
+    ...(tokens.rememberMe ? { expires: tokens.refreshTokenExpiresAt } : {}),
     path: '/api/v1/auth',
   });
 }
@@ -21,7 +28,7 @@ export class AuthController {
   register: RequestHandler = async (req: Request<unknown, unknown, RegisterInput>, res, next) => {
     try {
       const tokens = await this.authService.register(req.body);
-      setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
+      setRefreshCookie(res, tokens);
       res.status(201).json({ success: true, data: { accessToken: tokens.accessToken } });
     } catch (err) {
       next(err);
@@ -31,7 +38,7 @@ export class AuthController {
   login: RequestHandler = async (req: Request<unknown, unknown, LoginInput>, res, next) => {
     try {
       const tokens = await this.authService.login(req.body);
-      setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
+      setRefreshCookie(res, tokens);
       res.json({ success: true, data: { accessToken: tokens.accessToken } });
     } catch (err) {
       next(err);
@@ -42,7 +49,7 @@ export class AuthController {
     try {
       const rawToken = req.cookies[REFRESH_COOKIE_NAME] as string | undefined;
       const tokens = await this.authService.refresh(rawToken);
-      setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
+      setRefreshCookie(res, tokens);
       res.json({ success: true, data: { accessToken: tokens.accessToken } });
     } catch (err) {
       next(err);
