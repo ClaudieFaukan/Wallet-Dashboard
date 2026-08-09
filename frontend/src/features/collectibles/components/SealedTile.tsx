@@ -18,10 +18,12 @@ export function SealedTile({
   item,
   performance,
   onEditPrice,
+  onEdit,
 }: {
   item: CollectibleItem;
   performance?: CollectiblePerformanceRow;
   onEditPrice: (item: CollectibleItem) => void;
+  onEdit: (item: CollectibleItem) => void;
 }) {
   const { data } = useCollectibleWithHistory(item.id);
   const lastSync = data?.history[0];
@@ -29,7 +31,15 @@ export function SealedTile({
   const badgeVariant = pct === null ? 'neutral' : pct >= 0 ? 'success' : 'danger';
 
   return (
-    <Card>
+    <Card className="group relative">
+      <button
+        type="button"
+        title="Éditer"
+        onClick={() => onEdit(item)}
+        className="absolute right-3 top-3 z-10 rounded-md bg-bg-elevated/90 p-1.5 text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100"
+      >
+        <Pencil size={14} />
+      </button>
       <div className="flex aspect-[3/4] items-center justify-center overflow-hidden rounded-lg bg-bg-elevated">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" />

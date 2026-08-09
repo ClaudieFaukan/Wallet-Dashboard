@@ -4,6 +4,7 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { getErrorMessage } from '../../../lib/api';
 import type { CardSearchResult, CollectibleCondition } from '../../../types/api';
 import { useCreateCollectible, useSearchCard } from '../hooks/useCollectibles';
@@ -16,7 +17,8 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const [condition, setCondition] = useState<CollectibleCondition>('NM');
   const [notes, setNotes] = useState('');
 
-  const search = useSearchCard(query);
+  const debouncedQuery = useDebouncedValue(query, 300);
+  const search = useSearchCard(debouncedQuery);
   const create = useCreateCollectible();
   const toast = useToast();
 
@@ -65,24 +67,30 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
             placeholder="Pikachu…"
             autoFocus
           />
+          {query.length > 0 && query.length <= 1 && (
+            <p className="text-xs text-text-muted">Encore un caractère…</p>
+          )}
+          {search.isFetching && <p className="text-xs text-text-muted">Recherche…</p>}
           <ul className="max-h-80 space-y-1 overflow-y-auto">
-            {search.data?.map((result) => (
-              <li key={result.tcgdexId}>
-                <button
-                  onClick={() => setSelected(result)}
-                  className="flex w-full items-center gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm hover:border-accent"
-                >
-                  {result.imageUrl && (
-                    <img src={result.imageUrl} alt="" className="h-10 w-10 rounded object-contain" />
-                  )}
-                  <div>
-                    <p className="text-text-primary">{result.name}</p>
-                    <p className="text-xs text-text-muted">{result.setName ?? 'Set inconnu'}</p>
-                  </div>
-                </button>
-              </li>
-            ))}
-            {query.length > 1 && search.data?.length === 0 && (
+            {!search.isFetching &&
+              search.data?.map((result) => (
+                <li key={result.tcgdexId}>
+                  <button
+                    type="button"
+                    onClick={() => setSelected(result)}
+                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm hover:border-accent-gold"
+                  >
+                    {result.imageUrl && (
+                      <img src={result.imageUrl} alt="" className="h-10 w-10 rounded object-contain" />
+                    )}
+                    <div>
+                      <p className="text-text-primary">{result.name}</p>
+                      <p className="text-xs text-text-muted">{result.setName ?? 'Set inconnu'}</p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            {!search.isFetching && debouncedQuery.length > 1 && search.data?.length === 0 && (
               <li className="text-sm text-text-muted">Aucun résultat</li>
             )}
           </ul>

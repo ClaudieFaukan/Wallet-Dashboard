@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { formatCents, formatPercent } from '../../../lib/format';
@@ -9,7 +10,15 @@ const sourceLabels: Record<string, string> = {
   tcgdex_tcgplayer: 'TCGPlayer',
 };
 
-export function CardTile({ item, performance }: { item: CollectibleItem; performance?: CollectiblePerformanceRow }) {
+export function CardTile({
+  item,
+  performance,
+  onEdit,
+}: {
+  item: CollectibleItem;
+  performance?: CollectiblePerformanceRow;
+  onEdit: (item: CollectibleItem) => void;
+}) {
   const { data } = useCollectibleWithHistory(item.id);
   const latestSource = data?.history[0]?.source;
   const sourceLabel = latestSource ? sourceLabels[latestSource] : undefined;
@@ -18,7 +27,15 @@ export function CardTile({ item, performance }: { item: CollectibleItem; perform
   const badgeVariant = pct === null ? 'neutral' : pct >= 0 ? 'success' : 'danger';
 
   return (
-    <Card>
+    <Card className="group relative">
+      <button
+        type="button"
+        title="Éditer"
+        onClick={() => onEdit(item)}
+        className="absolute right-3 top-3 z-10 rounded-md bg-bg-elevated/90 p-1.5 text-text-muted opacity-0 transition-opacity hover:text-text-primary group-hover:opacity-100"
+      >
+        <Pencil size={14} />
+      </button>
       <div className="flex aspect-[3/4] items-center justify-center overflow-hidden rounded-lg bg-bg-elevated">
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" />
