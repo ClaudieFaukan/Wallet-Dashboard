@@ -56,25 +56,25 @@ export function CollectiblesSummary() {
       <div className="flex items-center justify-between">
         <div className="grid flex-1 grid-cols-4 gap-4">
           <Card>
-            <p className="text-xs text-text-muted">Total investi</p>
+            <p className="text-sm text-text-secondary">Total investi</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
               {formatCents(totals?.totalInvested ?? 0)}
             </p>
           </Card>
           <Card>
-            <p className="text-xs text-text-muted">Valeur actuelle</p>
+            <p className="text-sm text-text-secondary">Valeur actuelle</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
               {formatCents(totals?.totalCurrentValue ?? 0)}
             </p>
           </Card>
           <Card>
-            <p className="text-xs text-text-muted">Gain global</p>
+            <p className="text-sm text-text-secondary">Gain global</p>
             <p className={`mt-1 font-mono text-lg font-semibold ${(totals?.totalGainLossPct ?? 0) >= 0 ? 'text-accent-2' : 'text-accent-3'}`}>
               {totals ? formatPercent(totals.totalGainLossPct) : '—'}
             </p>
           </Card>
           <Card>
-            <p className="text-xs text-text-muted">Items</p>
+            <p className="text-sm text-text-secondary">Items</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">{itemCount}</p>
           </Card>
         </div>

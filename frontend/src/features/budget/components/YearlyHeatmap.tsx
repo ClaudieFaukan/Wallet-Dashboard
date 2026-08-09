@@ -54,7 +54,7 @@ export function YearlyHeatmap({ year }: { year: number }) {
                     <td key={i} className="p-1 text-center">
                       <div
                         className="mx-auto flex h-9 w-full items-center justify-center rounded-md font-mono text-[10px] text-text-primary"
-                        style={{ backgroundColor: `rgba(99, 102, 241, ${0.08 + intensity * 0.6})` }}
+                        style={{ backgroundColor: `rgba(201, 168, 76, ${0.08 + intensity * 0.6})` }}
                         title={formatCents(-value)}
                       >
                         {value > 0 ? formatCents(value).replace(',00', '') : ''}

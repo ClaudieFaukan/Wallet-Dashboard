@@ -28,12 +28,9 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-base px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-bg-surface p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-base font-bold text-white">
-            W
-          </div>
-          <h1 className="text-lg font-semibold text-text-primary">Wallet Dashboard</h1>
+      <div className="w-full max-w-sm rounded-xl border border-border bg-bg-surface p-8">
+        <div className="mb-6">
+          <p className="text-lg font-semibold tracking-tight text-text-primary">finance</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

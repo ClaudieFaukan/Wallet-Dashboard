@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { Variation } from '../../components/ui/Variation';
 import { AreaChartCard } from '../../components/charts/AreaChartCard';
 import { formatCents, formatDate } from '../../lib/format';
 import { AddEntryDrawer } from './components/AddEntryDrawer';
@@ -32,22 +33,27 @@ export function InvestmentDetailPage() {
       <div className="space-y-6 p-8">
         <div className="grid grid-cols-3 gap-4">
           <Card>
-            <p className="text-xs text-text-muted">Total investi</p>
+            <p className="text-sm text-text-secondary">Total investi</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">{formatCents(totalInvested)}</p>
           </Card>
           <Card>
-            <p className="text-xs text-text-muted">Valeur actuelle</p>
+            <p className="text-sm text-text-secondary">Valeur actuelle</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
               {formatCents(account?.currentValue ?? 0)}
             </p>
           </Card>
           <Card>
-            <p className="text-xs text-text-muted">Performance</p>
-            <p className="mt-1 font-mono text-lg font-semibold text-accent-2">
-              {totalInvested > 0
-                ? `${(((account?.currentValue ?? 0) - totalInvested) / totalInvested * 100).toFixed(1)}%`
-                : '—'}
-            </p>
+            <p className="text-sm text-text-secondary">Performance</p>
+            <div className="mt-1">
+              {totalInvested > 0 ? (
+                <Variation
+                  amountCents={(account?.currentValue ?? 0) - totalInvested}
+                  percent={(((account?.currentValue ?? 0) - totalInvested) / totalInvested) * 100}
+                />
+              ) : (
+                <span className="font-mono text-lg font-semibold text-text-primary">—</span>
+              )}
+            </div>
           </Card>
         </div>
 

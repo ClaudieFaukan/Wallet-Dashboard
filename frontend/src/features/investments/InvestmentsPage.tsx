@@ -18,7 +18,7 @@ export function InvestmentsPage() {
   return (
     <div>
       <Header
-        title="Investissements"
+        title="Investir"
         actions={
           <Button size="sm" icon={<Plus size={14} />} onClick={() => setDrawerOpen(true)}>
             Nouveau compte
@@ -28,7 +28,7 @@ export function InvestmentsPage() {
       <div className="space-y-6 p-8">
         {milestones && (
           <Card>
-            <p className="mb-3 text-xs uppercase tracking-wide text-text-muted">
+            <p className="mb-3 text-sm text-text-secondary">
               Total investi {formatCents(milestones.currentTotal)}
             </p>
             <div className="space-y-3">
@@ -43,7 +43,7 @@ export function InvestmentsPage() {
           {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-28" />)}
           {accounts?.map((account) => (
             <Link key={account.id} to={`/investments/${account.id}`}>
-              <Card className="transition-colors hover:border-accent/50">
+              <Card className="transition-colors hover:border-accent-gold/50">
                 <p className="text-sm font-semibold text-text-primary">{account.name}</p>
                 {account.platform && <p className="text-xs text-text-muted">{account.platform}</p>}
                 <p className="mt-2 font-mono text-lg font-semibold text-text-primary">
