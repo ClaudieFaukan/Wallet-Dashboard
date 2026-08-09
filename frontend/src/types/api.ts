@@ -173,6 +173,8 @@ export interface CreateSavingsGoalInput {
   type?: SavingsGoalType;
 }
 
+export type UpdateSavingsGoalInput = Partial<CreateSavingsGoalInput>;
+
 export interface SavingsMilestone {
   id: string;
   goalId: string;
@@ -301,6 +303,20 @@ export interface CryptoSnapshot {
   fetchedAt: string;
   totalValueUsd: number;
   rawData: unknown;
+}
+
+export interface WalletToken {
+  symbol: string;
+  name: string | null;
+  amount: number;
+  priceUsd: number | null;
+  valueUsdCents: number | null;
+  change24hPct: number | null;
+}
+
+export interface WalletTokensResponse {
+  tokens: WalletToken[];
+  note: string | null;
 }
 
 export type CollectibleItemType = 'card' | 'sealed';

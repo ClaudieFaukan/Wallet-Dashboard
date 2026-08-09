@@ -40,8 +40,10 @@ import type {
   UpdateAccountInput,
   UpdateTransactionInput,
   UpdateInvestmentAccountInput,
+  UpdateSavingsGoalInput,
   UpdateWalletInput,
   UpdateCollectibleInput,
+  WalletTokensResponse,
 } from '../types/api';
 
 const baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api/v1';
@@ -194,7 +196,7 @@ export const api = {
     getById: (id: string) => unwrap(client.get<ApiResponse<SavingsGoal>>(`/savings/${id}`)),
     create: (input: CreateSavingsGoalInput) =>
       unwrap(client.post<ApiResponse<SavingsGoal>>('/savings', input)),
-    update: (id: string, input: Partial<CreateSavingsGoalInput>) =>
+    update: (id: string, input: UpdateSavingsGoalInput) =>
       unwrap(client.patch<ApiResponse<SavingsGoal>>(`/savings/${id}`, input)),
     delete: (id: string) => client.delete(`/savings/${id}`),
     deposit: (id: string, amount: number) =>
@@ -238,6 +240,8 @@ export const api = {
     sync: (id: string) => unwrap(client.post<ApiResponse<CryptoSnapshot>>(`/crypto/wallets/${id}/sync`)),
     history: (id: string) =>
       unwrap(client.get<ApiResponse<CryptoSnapshot[]>>(`/crypto/wallets/${id}/history`)),
+    tokens: (id: string) =>
+      unwrap(client.get<ApiResponse<WalletTokensResponse>>(`/crypto/wallets/${id}/tokens`)),
   },
 
   collectibles: {

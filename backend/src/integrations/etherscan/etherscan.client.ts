@@ -38,6 +38,102 @@ export function weiToEth(wei: bigint): number {
   return Number(wei) / Number(WEI_PER_ETH);
 }
 
+interface EtherscanTokenTransfer {
+  contractAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tokenDecimal: string;
+}
+
+interface EtherscanTokenTxResponse {
+  status: string;
+  message: string;
+  result: EtherscanTokenTransfer[] | string;
+}
+
+export interface Erc20ContractInfo {
+  contractAddress: string;
+  tokenName: string;
+  tokenSymbol: string;
+  tokenDecimal: number;
+}
+
+/** ERC-20 contracts a wallet has ever received/sent, derived from its transfer
+ * history (`action=tokentx`) — Etherscan's free tier has no "list all token
+ * balances" endpoint, so this is the standard workaround: discover contracts
+ * from transfers, then query each one's current balance separately. */
+export async function getErc20ContractsTouched(
+  address: string,
+  apiKey: string,
+): Promise<Erc20ContractInfo[]> {
+  const url = new URL('https://api.etherscan.io/v2/api');
+  url.searchParams.set('chainid', ETHEREUM_MAINNET_CHAIN_ID);
+  url.searchParams.set('module', 'account');
+  url.searchParams.set('action', 'tokentx');
+  url.searchParams.set('address', address);
+  url.searchParams.set('sort', 'desc');
+  url.searchParams.set('apikey', apiKey);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Etherscan request failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as EtherscanTokenTxResponse;
+  if (data.status !== '1' || typeof data.result === 'string') {
+    // "No transactions found" comes back as status "0" — not an error, just empty.
+    if (data.message === 'No transactions found') return [];
+    throw new Error(`Etherscan error: ${data.message}`);
+  }
+
+  const byContract = new Map<string, Erc20ContractInfo>();
+  for (const tx of data.result) {
+    const key = tx.contractAddress.toLowerCase();
+    if (!byContract.has(key)) {
+      byContract.set(key, {
+        contractAddress: tx.contractAddress,
+        tokenName: tx.tokenName,
+        tokenSymbol: tx.tokenSymbol,
+        tokenDecimal: Number(tx.tokenDecimal),
+      });
+    }
+  }
+  return Array.from(byContract.values());
+}
+
+interface EtherscanTokenBalanceResponse {
+  status: string;
+  message: string;
+  result: string;
+}
+
+export async function getErc20Balance(
+  address: string,
+  contractAddress: string,
+  apiKey: string,
+): Promise<bigint> {
+  const url = new URL('https://api.etherscan.io/v2/api');
+  url.searchParams.set('chainid', ETHEREUM_MAINNET_CHAIN_ID);
+  url.searchParams.set('module', 'account');
+  url.searchParams.set('action', 'tokenbalance');
+  url.searchParams.set('contractaddress', contractAddress);
+  url.searchParams.set('address', address);
+  url.searchParams.set('tag', 'latest');
+  url.searchParams.set('apikey', apiKey);
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Etherscan request failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as EtherscanTokenBalanceResponse;
+  if (data.status !== '1') {
+    throw new Error(`Etherscan error: ${data.message}`);
+  }
+
+  return BigInt(data.result);
+}
+
 interface CoinGeckoSimplePriceResponse {
   ethereum?: { usd: number };
 }

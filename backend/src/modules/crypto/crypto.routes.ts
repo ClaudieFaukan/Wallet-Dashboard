@@ -19,3 +19,4 @@ cryptoRouter.patch('/wallets/:id', validate(updateWalletSchema), cryptoControlle
 cryptoRouter.delete('/wallets/:id', cryptoController.delete);
 cryptoRouter.post('/wallets/:id/sync', cryptoController.sync);
 cryptoRouter.get('/wallets/:id/history', cryptoController.history);
+cryptoRouter.get('/wallets/:id/tokens', cryptoController.tokens);

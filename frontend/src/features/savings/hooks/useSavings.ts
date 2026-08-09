@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
-import type { CreateSavingsGoalInput } from '../../../types/api';
+import type { CreateSavingsGoalInput, UpdateSavingsGoalInput } from '../../../types/api';
 
 export const savingsKey = ['savings'];
 
@@ -16,6 +16,15 @@ export function useCreateSavingsGoal() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateSavingsGoalInput) => api.savings.create(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: savingsKey }),
+  });
+}
+
+export function useUpdateSavingsGoal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateSavingsGoalInput }) =>
+      api.savings.update(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: savingsKey }),
   });
 }

@@ -79,4 +79,14 @@ export class CryptoController {
       next(err);
     }
   };
+
+  tokens: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const tokens = await this.cryptoService.getTokens(user.id, req.params.id as string);
+      res.json({ success: true, data: tokens });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

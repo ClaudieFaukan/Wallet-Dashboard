@@ -27,6 +27,64 @@ export function lamportsToSol(lamports: number): number {
   return lamports / LAMPORTS_PER_SOL;
 }
 
+const SPL_TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+
+interface SplTokenAccountsRpcResponse {
+  result?: {
+    value: {
+      account: {
+        data: {
+          parsed: {
+            info: {
+              mint: string;
+              tokenAmount: { uiAmount: number | null; decimals: number };
+            };
+          };
+        };
+      };
+    }[];
+  };
+  error?: { message: string };
+}
+
+export interface SplTokenBalance {
+  mint: string;
+  amount: number;
+  decimals: number;
+}
+
+/** SPL token balances for a wallet, via `getTokenAccountsByOwner` with
+ * `jsonParsed` encoding (public RPC, no key). Only mint + amount are
+ * available this way — resolving symbol/name would need a separate token
+ * registry lookup, not done here. */
+export async function getSplTokenAccounts(rpcUrl: string, address: string): Promise<SplTokenBalance[]> {
+  const response = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getTokenAccountsByOwner',
+      params: [address, { programId: SPL_TOKEN_PROGRAM_ID }, { encoding: 'jsonParsed' }],
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Solana RPC request failed: ${response.status}`);
+  }
+
+  const data = (await response.json()) as SplTokenAccountsRpcResponse;
+  if (data.error) throw new Error(`Solana RPC error: ${data.error.message}`);
+
+  return (data.result?.value ?? [])
+    .map((v) => v.account.data.parsed.info)
+    .filter((info) => (info.tokenAmount.uiAmount ?? 0) > 0)
+    .map((info) => ({
+      mint: info.mint,
+      amount: info.tokenAmount.uiAmount!,
+      decimals: info.tokenAmount.decimals,
+    }));
+}
+
 interface CoinGeckoSimplePriceResponse {
   solana?: { usd: number };
 }

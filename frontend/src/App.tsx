@@ -11,6 +11,7 @@ import { SavingsPage } from './features/savings/SavingsPage';
 import { InvestmentsPage } from './features/investments/InvestmentsPage';
 import { InvestmentDetailPage } from './features/investments/InvestmentDetailPage';
 import { CryptoPage } from './features/crypto/CryptoPage';
+import { WalletDetailPage } from './features/crypto/WalletDetailPage';
 import { CollectiblesPage } from './features/collectibles/CollectiblesPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 
@@ -29,6 +30,7 @@ export function App() {
           <Route path="investments" element={<InvestmentsPage />} />
           <Route path="investments/:id" element={<InvestmentDetailPage />} />
           <Route path="crypto" element={<CryptoPage />} />
+          <Route path="crypto/:id" element={<WalletDetailPage />} />
           <Route path="collectibles" element={<CollectiblesPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

@@ -1,4 +1,6 @@
-import { RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Pencil, RefreshCw } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
@@ -9,6 +11,7 @@ import { usdCentsToEurCents } from '../../../lib/constants';
 import { formatCents, formatDate, truncateAddress } from '../../../lib/format';
 import type { CryptoWallet } from '../../../types/api';
 import { useCryptoHistory, useSyncWallet } from '../hooks/useCrypto';
+import { EditWalletDrawer } from './EditWalletDrawer';
 
 const platformLabels: Record<CryptoWallet['platform'], string> = {
   metamask: 'MetaMask',
@@ -20,6 +23,7 @@ export function WalletCard({ wallet }: { wallet: CryptoWallet }) {
   const { data: history } = useCryptoHistory(wallet.id);
   const sync = useSyncWallet();
   const toast = useToast();
+  const [editOpen, setEditOpen] = useState(false);
   const latest = history?.[0];
 
   function handleSync() {
@@ -30,10 +34,20 @@ export function WalletCard({ wallet }: { wallet: CryptoWallet }) {
   }
 
   return (
-    <Card>
+    <Card className="group relative">
+      <button
+        type="button"
+        title="Éditer"
+        onClick={() => setEditOpen(true)}
+        className="absolute right-4 top-4 z-10 rounded-md p-1.5 text-text-muted opacity-0 transition-opacity hover:bg-bg-elevated hover:text-text-primary group-hover:opacity-100"
+      >
+        <Pencil size={14} />
+      </button>
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm font-semibold text-text-primary">{wallet.name}</p>
+          <Link to={`/crypto/${wallet.id}`} className="text-sm font-semibold text-text-primary hover:text-accent-gold">
+            {wallet.name}
+          </Link>
           <div className="mt-1 flex items-center gap-2">
             <Badge variant="accent">{platformLabels[wallet.platform]}</Badge>
             <span className="font-mono text-xs text-text-muted">{truncateAddress(wallet.address)}</span>
@@ -71,6 +85,8 @@ export function WalletCard({ wallet }: { wallet: CryptoWallet }) {
       >
         Sync
       </Button>
+
+      <EditWalletDrawer wallet={editOpen ? wallet : null} open={editOpen} onClose={() => setEditOpen(false)} />
     </Card>
   );
 }
