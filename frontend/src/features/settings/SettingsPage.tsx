@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Fingerprint, KeyRound, Plus, Tag, Trash2 } from 'lucide-react';
+import { Coins, Fingerprint, KeyRound, Plus, Tag, Trash2 } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -17,7 +17,12 @@ import {
 } from '../transactions/hooks/useTransactions';
 import { useTouchIdAvailability } from './hooks/useTouchIdAvailability';
 import { useSettingsStatus, useTestSetting, useUpdateSettings } from './hooks/useSettings';
-import type { CategoryType, TestSettingInput, TestSettingResult } from '../../types/api';
+import type {
+  CategoryType,
+  DisplayCurrency,
+  TestSettingInput,
+  TestSettingResult,
+} from '../../types/api';
 
 function CategoriesSection() {
   const { data: categories } = useCategories();
@@ -279,11 +284,31 @@ export function SettingsPage() {
   const touchIdAvailable = useTouchIdAvailability();
   const touchIdEnabled = useUiStore((s) => s.touchIdEnabled);
   const setTouchIdEnabled = useUiStore((s) => s.setTouchIdEnabled);
+  const displayCurrency = useUiStore((s) => s.displayCurrency);
+  const setDisplayCurrency = useUiStore((s) => s.setDisplayCurrency);
 
   return (
     <div>
       <Header title="Réglages" />
       <div className="space-y-6 p-8">
+        <Card>
+          <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-muted">
+            <Coins size={16} /> Devise d'affichage
+          </h3>
+          <Select
+            value={displayCurrency}
+            onChange={(e) => setDisplayCurrency(e.target.value as DisplayCurrency)}
+          >
+            <option value="EUR">Euro (€)</option>
+            <option value="USD">Dollar américain ($)</option>
+            <option value="CAD">Dollar canadien (CA$)</option>
+          </Select>
+          <p className="mt-2 text-xs text-text-muted">
+            Tous les montants sont convertis à l'affichage (taux de change quotidien). Les données
+            restent enregistrées en euros.
+          </p>
+        </Card>
+
         <Card>
           <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-muted">
             <Fingerprint size={16} /> Sécurité

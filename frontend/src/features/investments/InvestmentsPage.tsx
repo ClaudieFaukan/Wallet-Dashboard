@@ -6,7 +6,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { ProgressBar } from '../../components/charts/ProgressBar';
-import { formatCents } from '../../lib/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { CreateInvestmentAccountDrawer } from './components/CreateInvestmentAccountDrawer';
 import { useInvestmentAccounts, useInvestmentMilestones } from './hooks/useInvestments';
 
@@ -14,6 +14,7 @@ export function InvestmentsPage() {
   const { data: accounts, isLoading } = useInvestmentAccounts();
   const { data: milestones } = useInvestmentMilestones();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { formatCents } = useFormatCurrency();
 
   return (
     <div>

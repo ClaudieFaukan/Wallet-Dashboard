@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
-import { formatCents, formatDate } from '../../../lib/format';
+import { formatDate } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { Category, Transaction } from '../../../types/api';
 import { useDeleteTransaction, useUpdateTransaction } from '../hooks/useTransactions';
 
@@ -12,6 +13,7 @@ interface TransactionsTableProps {
 export function TransactionsTable({ transactions, categories }: TransactionsTableProps) {
   const updateTransaction = useUpdateTransaction();
   const deleteTransaction = useDeleteTransaction();
+  const { formatCents } = useFormatCurrency();
 
   if (transactions.length === 0) {
     return <p className="py-6 text-sm text-text-muted">Aucune transaction.</p>;

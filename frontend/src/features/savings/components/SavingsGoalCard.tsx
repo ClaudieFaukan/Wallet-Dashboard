@@ -3,7 +3,8 @@ import { CheckCircle2, Circle, Pencil, PlusCircle } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { CircularProgress } from '../../../components/charts/CircularProgress';
-import { formatCents, formatDate } from '../../../lib/format';
+import { formatDate } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { SavingsGoal } from '../../../types/api';
 import { useSavingsDeposits } from '../hooks/useSavings';
 import { DepositDrawer } from './DepositDrawer';
@@ -15,6 +16,7 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
   const [depositOpen, setDepositOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const { data: deposits } = useSavingsDeposits(goal.id);
+  const { formatCents } = useFormatCurrency();
   const pct = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
 
   return (

@@ -25,6 +25,7 @@ import type {
   CryptoWallet,
   CsvImportResult,
   DepositResult,
+  ExchangeRates,
   InvestmentAccount,
   InvestmentEntry,
   InvestmentMilestonesView,
@@ -277,5 +278,9 @@ export const api = {
       unwrap(client.put<ApiResponse<SettingsStatus>>('/settings', input)),
     test: (input: TestSettingInput) =>
       unwrap(client.post<ApiResponse<TestSettingResult>>('/settings/test', input)),
+  },
+
+  exchangeRates: {
+    latest: () => unwrap(client.get<ApiResponse<ExchangeRates>>('/exchange-rates/latest')),
   },
 };

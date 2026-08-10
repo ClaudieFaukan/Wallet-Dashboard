@@ -6,7 +6,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { CircularProgress } from '../../../components/charts/CircularProgress';
 import { useToast } from '../../../components/ui/Toast';
 import { getErrorMessage } from '../../../lib/api';
-import { formatCents } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { Account } from '../../../types/api';
 import { useImportCsv, useSyncRevolut } from '../hooks/useAccounts';
 
@@ -20,6 +20,7 @@ export function AccountRow({ account, sharePercent }: { account: Account; shareP
   const sync = useSyncRevolut();
   const importCsv = useImportCsv();
   const toast = useToast();
+  const { formatCents } = useFormatCurrency();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function handleSync() {

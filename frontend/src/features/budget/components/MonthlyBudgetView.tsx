@@ -5,7 +5,8 @@ import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ProgressBar } from '../../../components/charts/ProgressBar';
 import { chartColors } from '../../../components/charts/chartTheme';
-import { formatCents, formatMonth } from '../../../lib/format';
+import { formatMonth } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { BudgetCurrentView, Category } from '../../../types/api';
 import { useAddBudgetLine, useUpdateBudgetLine } from '../hooks/useBudget';
 
@@ -37,6 +38,7 @@ export function MonthlyBudgetView({ budget, categories }: MonthlyBudgetViewProps
   const [newCategoryId, setNewCategoryId] = useState('');
   const [bulkAdding, setBulkAdding] = useState(false);
   const addLine = useAddBudgetLine();
+  const { formatCents } = useFormatCurrency();
 
   const usedCategoryIds = new Set(budget.lines.map((l) => l.categoryId));
   const availableCategories = categories.filter((c) => !usedCategoryIds.has(c.id));

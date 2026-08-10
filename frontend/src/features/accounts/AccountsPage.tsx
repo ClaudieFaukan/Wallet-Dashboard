@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { DonutChartCard } from '../../components/charts/DonutChartCard';
-import { formatCents } from '../../lib/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { AccountRow } from './components/AccountRow';
 import { CreateAccountDrawer } from './components/CreateAccountDrawer';
 import { useAccounts } from './hooks/useAccounts';
@@ -13,6 +13,7 @@ import { useAccounts } from './hooks/useAccounts';
 export function AccountsPage() {
   const { data: accounts, isLoading } = useAccounts();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { formatCents } = useFormatCurrency();
 
   const total = (accounts ?? []).reduce((sum, a) => sum + a.balance, 0);
   const donutData = (accounts ?? []).map((a) => ({ label: a.name, value: a.balance }));

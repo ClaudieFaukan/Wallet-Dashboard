@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { DisplayCurrency } from '../types/api';
 
 interface UiState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
-  displayCurrency: string;
-  setDisplayCurrency: (currency: string) => void;
+  displayCurrency: DisplayCurrency;
+  setDisplayCurrency: (currency: DisplayCurrency) => void;
   /** Local app-lock via Touch ID — see LockScreen. Off by default and only
    * meaningful inside Electron on a Mac with Touch ID hardware. */
   touchIdEnabled: boolean;

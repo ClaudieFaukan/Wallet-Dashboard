@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { LineChartCard } from '../../../components/charts/LineChartCard';
 import { MilestoneMarker } from '../../../components/charts/MilestoneMarker';
-import { formatCents, formatDate } from '../../../lib/format';
+import { formatDate } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { useProjection } from '../hooks/useInvestments';
 
 interface SliderProps {
@@ -45,6 +46,7 @@ export function DcaSimulator({ accountId }: { accountId: string }) {
     annualRate: annualRatePct / 100,
     years,
   });
+  const { formatCents } = useFormatCurrency();
 
   const milestones = (projection?.milestones ?? []).filter((m) => !m.reached);
 

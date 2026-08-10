@@ -10,7 +10,8 @@ import { AreaChartCard } from '../../components/charts/AreaChartCard';
 import { DonutChartCard } from '../../components/charts/DonutChartCard';
 import { useNetWorth } from '../../hooks/useNetWorth';
 import { bucketMonthly, useNetWorthHistory } from '../../hooks/useNetWorthHistory';
-import { formatCents, formatDate, formatMonth } from '../../lib/format';
+import { formatDate, formatMonth } from '../../lib/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { useDashboardData } from './hooks/useDashboardData';
 
 type PeriodKey = '7J' | '1M' | '3M' | '6M' | 'YTD' | '1A' | 'TOUT';
@@ -28,6 +29,7 @@ const periodTabs: { value: PeriodKey; label: string }[] = [
 export function DashboardPage() {
   const [period, setPeriod] = useState<PeriodKey>('1A');
   const netWorth = useNetWorth();
+  const { formatCents } = useFormatCurrency();
   // eslint-disable-next-line react-hooks/purity -- harmless render-time read, see useDashboardData
   const now = Date.now();
   const daysSinceJan1 = Math.max(1, Math.ceil((now - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86_400_000));

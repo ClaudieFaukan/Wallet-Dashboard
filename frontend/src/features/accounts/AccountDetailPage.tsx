@@ -2,7 +2,8 @@ import { useParams } from 'react-router-dom';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/ui/Card';
 import { LineChartCard } from '../../components/charts/LineChartCard';
-import { formatCents, formatDate } from '../../lib/format';
+import { formatDate } from '../../lib/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { TransactionsTable } from '../transactions/components/TransactionsTable';
 import { useCategories, useTransactions } from '../transactions/hooks/useTransactions';
 import { useAccount, useAccountBalanceHistory } from './hooks/useAccounts';
@@ -14,6 +15,7 @@ export function AccountDetailPage() {
   const { data: history } = useAccountBalanceHistory(accountId, 90);
   const { data: categories } = useCategories();
   const { data: transactions } = useTransactions({ accountId, limit: 50 });
+  const { formatCents } = useFormatCurrency();
 
   return (
     <div>

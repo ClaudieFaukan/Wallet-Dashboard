@@ -482,3 +482,11 @@ export interface TestSettingResult {
   success: boolean;
   message: string;
 }
+
+export type DisplayCurrency = 'EUR' | 'USD' | 'CAD';
+
+export interface ExchangeRates {
+  date: string;
+  base: string;
+  rates: Record<string, number>;
+}

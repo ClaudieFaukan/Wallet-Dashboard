@@ -5,7 +5,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { useToast } from '../../../components/ui/Toast';
 import { AreaChartCard } from '../../../components/charts/AreaChartCard';
 import { getErrorMessage } from '../../../lib/api';
-import { formatCents, formatMonth, formatPercent } from '../../../lib/format';
+import { formatMonth, formatPercent } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { bucketMonthly } from '../../../hooks/useNetWorthHistory';
 import { useCollectiblePerformance, useCollectiblesValueHistory, useSyncPrices } from '../hooks/useCollectibles';
 
@@ -35,6 +36,7 @@ export function CollectiblesSummary() {
   const history = useCollectiblesValueHistory(365);
   const syncPrices = useSyncPrices();
   const toast = useToast();
+  const { formatCents } = useFormatCurrency();
 
   const monthly = bucketMonthly(history.days, history.total).map((p) => ({
     label: formatMonth(p.month),

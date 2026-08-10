@@ -2,7 +2,8 @@ import { Pencil } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
-import { formatCents, formatDate, formatPercent } from '../../../lib/format';
+import { formatDate, formatPercent } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CollectibleItem, CollectiblePerformanceRow } from '../../../types/api';
 import { useCollectibleWithHistory } from '../hooks/useCollectibles';
 
@@ -26,6 +27,7 @@ export function SealedTile({
   onEdit: (item: CollectibleItem) => void;
 }) {
   const { data } = useCollectibleWithHistory(item.id);
+  const { formatCents } = useFormatCurrency();
   const lastSync = data?.history[0];
   const pct = performance?.gainLossPct ?? null;
   const badgeVariant = pct === null ? 'neutral' : pct >= 0 ? 'success' : 'danger';

@@ -6,7 +6,8 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Variation } from '../../components/ui/Variation';
 import { AreaChartCard } from '../../components/charts/AreaChartCard';
-import { formatCents, formatDate } from '../../lib/format';
+import { formatDate } from '../../lib/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { AddEntryDrawer } from './components/AddEntryDrawer';
 import { DcaSimulator } from './components/DcaSimulator';
 import { useInvestmentAccount, useInvestmentEntries } from './hooks/useInvestments';
@@ -17,6 +18,7 @@ export function InvestmentDetailPage() {
   const { data: account } = useInvestmentAccount(accountId);
   const { data: entries } = useInvestmentEntries(accountId);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { formatCents } = useFormatCurrency();
 
   const totalInvested = (entries ?? []).reduce((sum, e) => sum + e.amountInvested, 0);
 

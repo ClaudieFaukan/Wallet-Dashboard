@@ -1,11 +1,12 @@
 import { Card } from '../../../components/ui/Card';
-import { formatCents } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { useCategoryMonthMatrix } from '../hooks/useBudget';
 
 const MONTH_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
 
 export function YearlyHeatmap({ year }: { year: number }) {
   const { byMonth, isLoading } = useCategoryMonthMatrix(year);
+  const { formatCents } = useFormatCurrency();
 
   if (isLoading) return <Card>Chargement…</Card>;
 

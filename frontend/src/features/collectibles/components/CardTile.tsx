@@ -1,7 +1,8 @@
 import { Pencil } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
-import { formatCents, formatPercent } from '../../../lib/format';
+import { formatPercent } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CollectibleItem, CollectiblePerformanceRow } from '../../../types/api';
 import { useCollectibleWithHistory } from '../hooks/useCollectibles';
 
@@ -20,6 +21,7 @@ export function CardTile({
   onEdit: (item: CollectibleItem) => void;
 }) {
   const { data } = useCollectibleWithHistory(item.id);
+  const { formatCents } = useFormatCurrency();
   const latestSource = data?.history[0]?.source;
   const sourceLabel = latestSource ? sourceLabels[latestSource] : undefined;
 

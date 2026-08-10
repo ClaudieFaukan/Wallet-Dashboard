@@ -9,7 +9,8 @@ import { LineChartCard } from '../../components/charts/LineChartCard';
 import { useToast } from '../../components/ui/Toast';
 import { getErrorMessage } from '../../lib/api';
 import { usdCentsToEurCents } from '../../lib/constants';
-import { formatCents, formatDate } from '../../lib/format';
+import { formatDate } from '../../lib/format';
+import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { useCryptoHistory, useCryptoWallet, useSyncWallet, useWalletTokens } from './hooks/useCrypto';
 
 export function WalletDetailPage() {
@@ -20,6 +21,7 @@ export function WalletDetailPage() {
   const tokens = useWalletTokens(walletId);
   const sync = useSyncWallet();
   const toast = useToast();
+  const { formatCents } = useFormatCurrency();
   const latest = history?.[0];
 
   function handleSync() {

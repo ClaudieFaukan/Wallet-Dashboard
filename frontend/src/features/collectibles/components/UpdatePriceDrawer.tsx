@@ -4,7 +4,8 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { getErrorMessage } from '../../../lib/api';
-import { formatCents, formatDate } from '../../../lib/format';
+import { formatDate } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CollectibleItem } from '../../../types/api';
 import { useCollectibleWithHistory, useUpdatePrice } from '../hooks/useCollectibles';
 
@@ -22,6 +23,7 @@ export function UpdatePriceDrawer({
   const { data } = useCollectibleWithHistory(item?.id ?? '');
   const updatePrice = useUpdatePrice();
   const toast = useToast();
+  const { formatCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();

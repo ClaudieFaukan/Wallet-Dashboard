@@ -7,3 +7,4 @@ export * from './investments.js';
 export * from './crypto.js';
 export * from './collectibles.js';
 export * from './settings.js';
+export * from './exchange-rates.js';

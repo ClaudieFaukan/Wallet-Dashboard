@@ -8,7 +8,8 @@ import { useToast } from '../../../components/ui/Toast';
 import { LineChartCard } from '../../../components/charts/LineChartCard';
 import { getErrorMessage } from '../../../lib/api';
 import { usdCentsToEurCents } from '../../../lib/constants';
-import { formatCents, formatDate, truncateAddress } from '../../../lib/format';
+import { formatDate, truncateAddress } from '../../../lib/format';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CryptoWallet } from '../../../types/api';
 import { useCryptoHistory, useSyncWallet } from '../hooks/useCrypto';
 import { EditWalletDrawer } from './EditWalletDrawer';
@@ -23,6 +24,7 @@ export function WalletCard({ wallet }: { wallet: CryptoWallet }) {
   const { data: history } = useCryptoHistory(wallet.id);
   const sync = useSyncWallet();
   const toast = useToast();
+  const { formatCents } = useFormatCurrency();
   const [editOpen, setEditOpen] = useState(false);
   const latest = history?.[0];
 
