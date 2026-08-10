@@ -1,15 +1,18 @@
 import { and, desc, eq, gte, inArray } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
-import { env } from '../../config/env.js';
 import { parseCsv } from '../../integrations/csv/csv.parser.js';
 import { AppError } from '../../shared/utils/AppError.js';
+import type { SettingsService } from '../settings/settings.service.js';
 import type { CreateAccountInput, UpdateAccountInput } from './accounts.schema.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export class AccountsService {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(
+    private readonly db: NodePgDatabase<typeof schema>,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   async list(userId: string) {
     return this.db.select().from(schema.accounts).where(eq(schema.accounts.userId, userId));
@@ -122,7 +125,8 @@ export class AccountsService {
     await this.getById(userId, accountId);
     // Full OAuth PKCE + fetch/persist wiring is deferred to a dedicated session
     // once real Revolut Developer credentials exist (see integrations/revolut/revolut.client.ts).
-    if (!env.REVOLUT_CLIENT_ID) {
+    const clientId = await this.settingsService.getValue(userId, 'revolutClientId');
+    if (!clientId) {
       throw new AppError(501, 'REVOLUT_NOT_CONFIGURED', 'Revolut sync is not configured yet');
     }
     throw new AppError(501, 'REVOLUT_NOT_CONFIGURED', 'Revolut sync is not implemented yet');

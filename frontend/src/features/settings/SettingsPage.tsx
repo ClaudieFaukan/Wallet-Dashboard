@@ -10,14 +10,14 @@ import { Button } from '../../components/ui/Button';
 import { useToast } from '../../components/ui/Toast';
 import { getErrorMessage } from '../../lib/api';
 import { useUiStore } from '../../store/uiStore';
-import { useCollectiblesConfig } from '../collectibles/hooks/useCollectibles';
 import {
   useCategories,
   useCreateCategory,
   useDeleteCategory,
 } from '../transactions/hooks/useTransactions';
 import { useTouchIdAvailability } from './hooks/useTouchIdAvailability';
-import type { CategoryType } from '../../types/api';
+import { useSettingsStatus, useTestSetting, useUpdateSettings } from './hooks/useSettings';
+import type { CategoryType, TestSettingInput, TestSettingResult } from '../../types/api';
 
 function CategoriesSection() {
   const { data: categories } = useCategories();
@@ -96,11 +96,189 @@ function CategoriesSection() {
   );
 }
 
+type FieldName =
+  | 'etherscanApiKey'
+  | 'cryptoComApiKey'
+  | 'cryptoComApiSecret'
+  | 'pokemonPriceTrackerApiKey'
+  | 'poketraceApiKey'
+  | 'revolutClientId'
+  | 'revolutClientSecret';
+
+interface IntegrationGroupProps {
+  title: string;
+  configured: boolean;
+  fields: { name: FieldName; label: string }[];
+  onSave: (values: Partial<Record<FieldName, string>>) => Promise<void>;
+  saving: boolean;
+  onTest: (values: Partial<Record<FieldName, string>>) => void;
+  testing: boolean;
+  testResult?: TestSettingResult;
+}
+
+function IntegrationGroup({
+  title,
+  configured,
+  fields,
+  onSave,
+  saving,
+  onTest,
+  testing,
+  testResult,
+}: IntegrationGroupProps) {
+  const [values, setValues] = useState<Partial<Record<FieldName, string>>>({});
+  const hasAnyValue = fields.some((f) => values[f.name]?.trim());
+  const hasAllValues = fields.every((f) => values[f.name]?.trim());
+
+  async function handleSave() {
+    try {
+      await onSave(values);
+      setValues({});
+    } catch {
+      // keep the typed values so the user can retry without re-typing
+    }
+  }
+
+  return (
+    <div className="space-y-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-text-primary">{title}</span>
+        <Badge variant={configured ? 'success' : 'neutral'}>
+          {configured ? 'Configuré ✓' : 'Non configuré'}
+        </Badge>
+      </div>
+      <div className="flex flex-wrap items-end gap-2">
+        {fields.map((f) => (
+          <Input
+            key={f.name}
+            type="password"
+            autoComplete="off"
+            label={f.label}
+            placeholder={configured ? '••••••••' : ''}
+            value={values[f.name] ?? ''}
+            onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+          />
+        ))}
+        <Button size="sm" variant="secondary" disabled={!hasAnyValue || saving} onClick={handleSave}>
+          Enregistrer
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!hasAllValues || testing}
+          onClick={() => onTest(values)}
+        >
+          Tester
+        </Button>
+      </div>
+      {testResult && (
+        <p className={`text-xs ${testResult.success ? 'text-accent-2' : 'text-accent-3'}`}>
+          {testResult.message}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function IntegrationsSection() {
+  const { data: status } = useSettingsStatus();
+  const updateSettings = useUpdateSettings();
+  const testSetting = useTestSetting();
+  const toast = useToast();
+  const [testResults, setTestResults] = useState<Record<string, TestSettingResult>>({});
+
+  async function handleSave(values: Partial<Record<FieldName, string>>) {
+    try {
+      await updateSettings.mutateAsync(values);
+      toast.success('Enregistré');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      throw err;
+    }
+  }
+
+  function handleTest(section: TestSettingInput['section'], values: Partial<Record<FieldName, string>>) {
+    testSetting.mutate({ section, ...values } as TestSettingInput, {
+      onSuccess: (result) => setTestResults((r) => ({ ...r, [section]: result })),
+      onError: (err) =>
+        setTestResults((r) => ({
+          ...r,
+          [section]: { success: false, message: getErrorMessage(err) },
+        })),
+    });
+  }
+
+  return (
+    <Card>
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-muted">
+        <KeyRound size={16} /> Intégrations
+      </h3>
+      <div className="space-y-4">
+        <IntegrationGroup
+          title="Etherscan (Ethereum / MetaMask)"
+          configured={Boolean(status?.etherscanConfigured)}
+          fields={[{ name: 'etherscanApiKey', label: 'Clé API' }]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('etherscan', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.etherscan}
+        />
+        <IntegrationGroup
+          title="Crypto.com Exchange"
+          configured={Boolean(status?.cryptoComConfigured)}
+          fields={[
+            { name: 'cryptoComApiKey', label: 'Clé API' },
+            { name: 'cryptoComApiSecret', label: 'Secret' },
+          ]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('cryptoCom', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.cryptoCom}
+        />
+        <IntegrationGroup
+          title="PokemonPriceTracker"
+          configured={Boolean(status?.pokemonPriceTrackerConfigured)}
+          fields={[{ name: 'pokemonPriceTrackerApiKey', label: 'Clé API' }]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('pokemonPriceTracker', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.pokemonPriceTracker}
+        />
+        <IntegrationGroup
+          title="Poketrace"
+          configured={Boolean(status?.poketraceConfigured)}
+          fields={[{ name: 'poketraceApiKey', label: 'Clé API' }]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('poketrace', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.poketrace}
+        />
+        <IntegrationGroup
+          title="Revolut"
+          configured={Boolean(status?.revolutConfigured)}
+          fields={[
+            { name: 'revolutClientId', label: 'Client ID' },
+            { name: 'revolutClientSecret', label: 'Client Secret' },
+          ]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('revolut', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.revolut}
+        />
+      </div>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const touchIdAvailable = useTouchIdAvailability();
   const touchIdEnabled = useUiStore((s) => s.touchIdEnabled);
   const setTouchIdEnabled = useUiStore((s) => s.setTouchIdEnabled);
-  const { data: config } = useCollectiblesConfig();
 
   return (
     <div>
@@ -126,31 +304,7 @@ export function SettingsPage() {
 
         <CategoriesSection />
 
-        <Card>
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-muted">
-            <KeyRound size={16} /> Sources de prix — Scellés
-          </h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-primary">PokemonPriceTracker</span>
-              <Badge variant={config?.pokemonPriceTrackerConfigured ? 'success' : 'neutral'}>
-                {config?.pokemonPriceTrackerConfigured ? 'Configuré' : 'Non configuré'}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-text-primary">Poketrace</span>
-              <Badge variant={config?.poketraceConfigured ? 'success' : 'neutral'}>
-                {config?.poketraceConfigured ? 'Configuré' : 'Non configuré'}
-              </Badge>
-            </div>
-          </div>
-          {!config?.pokemonPriceTrackerConfigured && !config?.poketraceConfigured && (
-            <p className="mt-4 text-xs text-text-muted">
-              Les prix du scellé sont mis à jour manuellement. Configurez une clé API côté serveur
-              (variables d'environnement backend) pour automatiser ces mises à jour.
-            </p>
-          )}
-        </Card>
+        <IntegrationsSection />
       </div>
     </div>
   );

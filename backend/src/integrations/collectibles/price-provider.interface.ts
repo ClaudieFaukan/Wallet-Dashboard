@@ -12,5 +12,6 @@ export interface PriceResult {
 
 export interface IPriceProvider {
   readonly name: string;
-  fetchPrice(item: CollectibleItem): Promise<PriceResult | null>;
+  /** `apiKey` is resolved by the caller from `app_settings` (see SettingsService) — providers that don't need one ignore it. */
+  fetchPrice(item: CollectibleItem, apiKey?: string | null): Promise<PriceResult | null>;
 }

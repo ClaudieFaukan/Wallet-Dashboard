@@ -34,13 +34,17 @@ import type {
   ProjectionResult,
   SavingsDeposit,
   SavingsGoal,
+  SettingsStatus,
   SyncPricesResult,
+  TestSettingInput,
+  TestSettingResult,
   Transaction,
   TransactionStats,
   UpdateAccountInput,
   UpdateTransactionInput,
   UpdateInvestmentAccountInput,
   UpdateSavingsGoalInput,
+  UpdateSettingsInput,
   UpdateWalletInput,
   UpdateCollectibleInput,
   WalletTokensResponse,
@@ -265,5 +269,13 @@ export const api = {
     searchCard: (q: string) =>
       unwrap(client.get<ApiResponse<CardSearchResult[]>>('/collectibles/search/card', { params: { q } })),
     config: () => unwrap(client.get<ApiResponse<CollectiblesConfig>>('/collectibles/config')),
+  },
+
+  settings: {
+    status: () => unwrap(client.get<ApiResponse<SettingsStatus>>('/settings')),
+    update: (input: UpdateSettingsInput) =>
+      unwrap(client.put<ApiResponse<SettingsStatus>>('/settings', input)),
+    test: (input: TestSettingInput) =>
+      unwrap(client.post<ApiResponse<TestSettingResult>>('/settings/test', input)),
   },
 };

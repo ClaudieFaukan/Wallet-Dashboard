@@ -3,6 +3,7 @@ import multer from 'multer';
 import { db } from '../../config/database.js';
 import { requireAuth } from '../../shared/middleware/auth.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
+import { settingsService } from '../settings/settings.routes.js';
 import { AccountsController } from './accounts.controller.js';
 import {
   balanceHistoryQuerySchema,
@@ -13,7 +14,7 @@ import { AccountsService } from './accounts.service.js';
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-const accountsService = new AccountsService(db);
+const accountsService = new AccountsService(db, settingsService);
 const accountsController = new AccountsController(accountsService);
 
 export const accountsRouter = Router();

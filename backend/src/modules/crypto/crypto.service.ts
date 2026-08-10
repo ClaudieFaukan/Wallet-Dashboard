@@ -2,6 +2,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
 import { env } from '../../config/env.js';
+import type { SettingsService } from '../settings/settings.service.js';
 import {
   getErc20Balance,
   getErc20ContractsTouched,
@@ -31,7 +32,10 @@ export interface WalletToken {
 type CryptoWallet = typeof schema.cryptoWallets.$inferSelect;
 
 export class CryptoService {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(
+    private readonly db: NodePgDatabase<typeof schema>,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   async list(userId: string) {
     return this.db
@@ -78,15 +82,17 @@ export class CryptoService {
     switch (wallet.platform) {
       case 'phantom':
         return this.syncSolana(wallet);
-      case 'metamask':
-        if (!env.ETHERSCAN_API_KEY) {
+      case 'metamask': {
+        const apiKey = await this.settingsService.getValue(userId, 'etherscanApiKey');
+        if (!apiKey) {
           throw new AppError(
             501,
             'ETHERSCAN_NOT_CONFIGURED',
             'Etherscan sync is not configured yet',
           );
         }
-        return this.syncEthereum(wallet, env.ETHERSCAN_API_KEY);
+        return this.syncEthereum(wallet, apiKey);
+      }
       case 'crypto_com':
         throw new AppError(
           501,
@@ -109,11 +115,13 @@ export class CryptoService {
     const wallet = await this.getById(userId, id);
 
     switch (wallet.platform) {
-      case 'metamask':
-        if (!env.ETHERSCAN_API_KEY) {
+      case 'metamask': {
+        const apiKey = await this.settingsService.getValue(userId, 'etherscanApiKey');
+        if (!apiKey) {
           throw new AppError(501, 'ETHERSCAN_NOT_CONFIGURED', 'Etherscan sync is not configured yet');
         }
-        return { tokens: await this.getEthereumTokens(wallet.address, env.ETHERSCAN_API_KEY), note: null };
+        return { tokens: await this.getEthereumTokens(wallet.address, apiKey), note: null };
+      }
       case 'phantom':
         return { tokens: await this.getSolanaTokens(wallet.address), note: null };
       case 'crypto_com':

@@ -1,4 +1,3 @@
-import { env } from '../../config/env.js';
 import type { CollectibleItem, IPriceProvider, PriceResult } from './price-provider.interface.js';
 
 // Poketrace API (https://poketrace.com/docs). Never exercised live (no API
@@ -22,7 +21,7 @@ interface PoketraceSearchResponse {
   data?: PoketraceCard[];
 }
 
-async function search(
+export async function search(
   productType: 'card' | 'sealed',
   query: string,
   apiKey: string,
@@ -43,11 +42,11 @@ async function search(
 
 export const poketraceProvider: IPriceProvider = {
   name: 'poketrace',
-  async fetchPrice(item: CollectibleItem): Promise<PriceResult | null> {
-    if (!env.POKETRACE_API_KEY) return null;
+  async fetchPrice(item: CollectibleItem, apiKey?: string | null): Promise<PriceResult | null> {
+    if (!apiKey) return null;
 
     const productType = item.itemType === 'sealed' ? 'sealed' : 'card';
-    const card = await search(productType, item.name, env.POKETRACE_API_KEY);
+    const card = await search(productType, item.name, apiKey);
     const priceEur = card?.price ?? card?.market_price ?? card?.value ?? null;
     if (priceEur === null) return null;
 

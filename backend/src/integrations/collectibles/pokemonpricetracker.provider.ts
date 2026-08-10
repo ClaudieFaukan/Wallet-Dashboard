@@ -1,4 +1,3 @@
-import { env } from '../../config/env.js';
 import type { CollectibleItem, IPriceProvider, PriceResult } from './price-provider.interface.js';
 
 // PokemonPriceTracker API v2 (https://www.pokemonpricetracker.com/pokemon-card-api).
@@ -19,7 +18,7 @@ interface PokemonPriceTrackerSearchResponse {
   data?: PokemonPriceTrackerCard[];
 }
 
-async function search(
+export async function search(
   endpoint: 'cards' | 'sealed-products',
   query: string,
   apiKey: string,
@@ -39,11 +38,11 @@ async function search(
 
 export const pokemonPriceTrackerProvider: IPriceProvider = {
   name: 'pokemonpricetracker',
-  async fetchPrice(item: CollectibleItem): Promise<PriceResult | null> {
-    if (!env.POKEMON_PRICE_TRACKER_API_KEY) return null;
+  async fetchPrice(item: CollectibleItem, apiKey?: string | null): Promise<PriceResult | null> {
+    if (!apiKey) return null;
 
     const endpoint = item.itemType === 'sealed' ? 'sealed-products' : 'cards';
-    const card = await search(endpoint, item.name, env.POKEMON_PRICE_TRACKER_API_KEY);
+    const card = await search(endpoint, item.name, apiKey);
     if (!card?.prices?.market) return null;
 
     return {

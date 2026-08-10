@@ -12,6 +12,7 @@ import { collectiblesRouter } from './modules/collectibles/collectibles.routes.j
 import { cryptoRouter } from './modules/crypto/crypto.routes.js';
 import { investmentsRouter } from './modules/investments/investments.routes.js';
 import { savingsRouter } from './modules/savings/savings.routes.js';
+import { settingsRouter } from './modules/settings/settings.routes.js';
 import { transactionsRouter } from './modules/transactions/transactions.routes.js';
 import { errorHandler } from './shared/middleware/errorHandler.middleware.js';
 
@@ -38,6 +39,7 @@ export function createApp() {
   app.use('/api/v1/crypto', cryptoRouter);
   app.use('/api/v1/investments', investmentsRouter);
   app.use('/api/v1/savings', savingsRouter);
+  app.use('/api/v1/settings', settingsRouter);
   app.use('/api/v1/transactions', transactionsRouter);
 
   // Production only: the Electron shell loads http://localhost:<PORT> directly

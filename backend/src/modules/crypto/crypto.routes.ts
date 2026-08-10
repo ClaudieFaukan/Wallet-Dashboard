@@ -2,11 +2,12 @@ import { Router } from 'express';
 import { db } from '../../config/database.js';
 import { requireAuth } from '../../shared/middleware/auth.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
+import { settingsService } from '../settings/settings.routes.js';
 import { CryptoController } from './crypto.controller.js';
 import { createWalletSchema, updateWalletSchema } from './crypto.schema.js';
 import { CryptoService } from './crypto.service.js';
 
-const cryptoService = new CryptoService(db);
+const cryptoService = new CryptoService(db, settingsService);
 const cryptoController = new CryptoController(cryptoService);
 
 export const cryptoRouter = Router();

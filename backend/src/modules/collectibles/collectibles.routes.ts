@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../../config/database.js';
 import { requireAuth } from '../../shared/middleware/auth.middleware.js';
 import { validate } from '../../shared/middleware/validate.middleware.js';
+import { settingsService } from '../settings/settings.routes.js';
 import { CollectiblesController } from './collectibles.controller.js';
 import {
   createCollectibleSchema,
@@ -13,7 +14,7 @@ import {
 } from './collectibles.schema.js';
 import { CollectiblesService } from './collectibles.service.js';
 
-const collectiblesService = new CollectiblesService(db);
+const collectiblesService = new CollectiblesService(db, settingsService);
 const collectiblesController = new CollectiblesController(collectiblesService);
 
 export const collectiblesRouter = Router();

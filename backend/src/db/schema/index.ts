@@ -6,3 +6,4 @@ export * from './savings.js';
 export * from './investments.js';
 export * from './crypto.js';
 export * from './collectibles.js';
+export * from './settings.js';

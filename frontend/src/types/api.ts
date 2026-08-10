@@ -452,3 +452,33 @@ export interface CollectiblesConfig {
   pokemonPriceTrackerConfigured: boolean;
   poketraceConfigured: boolean;
 }
+
+export interface SettingsStatus {
+  etherscanConfigured: boolean;
+  cryptoComConfigured: boolean;
+  pokemonPriceTrackerConfigured: boolean;
+  poketraceConfigured: boolean;
+  revolutConfigured: boolean;
+}
+
+export interface UpdateSettingsInput {
+  etherscanApiKey?: string;
+  cryptoComApiKey?: string;
+  cryptoComApiSecret?: string;
+  pokemonPriceTrackerApiKey?: string;
+  poketraceApiKey?: string;
+  revolutClientId?: string;
+  revolutClientSecret?: string;
+}
+
+export type TestSettingInput =
+  | { section: 'etherscan'; etherscanApiKey: string }
+  | { section: 'cryptoCom'; cryptoComApiKey: string; cryptoComApiSecret: string }
+  | { section: 'pokemonPriceTracker'; pokemonPriceTrackerApiKey: string }
+  | { section: 'poketrace'; poketraceApiKey: string }
+  | { section: 'revolut'; revolutClientId: string; revolutClientSecret: string };
+
+export interface TestSettingResult {
+  success: boolean;
+  message: string;
+}

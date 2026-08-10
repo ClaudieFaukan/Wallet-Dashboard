@@ -1,9 +1,10 @@
 import cron from 'node-cron';
 import { db } from '../../config/database.js';
 import * as schema from '../../db/schema/index.js';
+import { settingsService } from '../settings/settings.routes.js';
 import { CollectiblesService } from './collectibles.service.js';
 
-const collectiblesService = new CollectiblesService(db);
+const collectiblesService = new CollectiblesService(db, settingsService);
 
 /** Single-user app (see AuthService.register) — sync runs for whichever one user exists. */
 export function scheduleCollectiblesSync(): void {

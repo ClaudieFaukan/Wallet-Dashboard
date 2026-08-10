@@ -1,10 +1,10 @@
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
-import { env } from '../../config/env.js';
 import { getPriceProvider } from '../../integrations/collectibles/price-router.service.js';
 import { searchTcgdexCards } from '../../integrations/collectibles/tcgdex.provider.js';
 import { AppError } from '../../shared/utils/AppError.js';
+import type { SettingsService } from '../settings/settings.service.js';
 import type {
   CreateCollectibleInput,
   ManualPriceUpdateInput,
@@ -19,12 +19,16 @@ function sleep(ms: number): Promise<void> {
 }
 
 export class CollectiblesService {
-  constructor(private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(
+    private readonly db: NodePgDatabase<typeof schema>,
+    private readonly settingsService: SettingsService,
+  ) {}
 
-  getConfig() {
+  async getConfig(userId: string) {
+    const status = await this.settingsService.getStatus(userId);
     return {
-      pokemonPriceTrackerConfigured: Boolean(env.POKEMON_PRICE_TRACKER_API_KEY),
-      poketraceConfigured: Boolean(env.POKETRACE_API_KEY),
+      pokemonPriceTrackerConfigured: status.pokemonPriceTrackerConfigured,
+      poketraceConfigured: status.poketraceConfigured,
     };
   }
 
@@ -109,10 +113,19 @@ export class CollectiblesService {
     let skipped = 0;
     let errors = 0;
 
+    const [pokemonPriceTrackerApiKey, poketraceApiKey] = await Promise.all([
+      this.settingsService.getValue(userId, 'pokemonPriceTrackerApiKey'),
+      this.settingsService.getValue(userId, 'poketraceApiKey'),
+    ]);
+    const apiKeyByPriceSource: Partial<Record<CollectibleItem['priceSource'], string | null>> = {
+      pokemonpricetracker: pokemonPriceTrackerApiKey,
+      poketrace: poketraceApiKey,
+    };
+
     for (const item of items) {
       const provider = getPriceProvider(item.priceSource);
       try {
-        const result = await provider.fetchPrice(item);
+        const result = await provider.fetchPrice(item, apiKeyByPriceSource[item.priceSource]);
         if (!result) {
           skipped++;
         } else {

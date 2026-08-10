@@ -138,6 +138,11 @@ describe('crypto module', () => {
         .send({ name: 'MetaMask', platform: 'metamask', address: '0xSomeAddr', chain: 'ethereum' });
       const walletId = createRes.body.data.id as string;
 
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ etherscanApiKey: 'test-etherscan-key' });
+
       vi.stubGlobal(
         'fetch',
         vi.fn((url: string | URL) => {
