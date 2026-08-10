@@ -62,6 +62,26 @@ describe('collectibles module', () => {
 
       expect(res.status).toBe(201);
       expect(res.body.data.priceSource).toBe('tcgdex');
+      expect(res.body.data.tcgType).toBe('pokemon');
+    });
+
+    it('creates a manually-entered card for a non-Pokémon game', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const res = await agent
+        .post('/api/v1/collectibles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          itemType: 'card',
+          name: 'Monkey D. Luffy',
+          purchasePrice: 3000,
+          purchaseDate: '2026-01-01',
+          tcgType: 'onepiece',
+          priceSource: 'manual',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.tcgType).toBe('onepiece');
+      expect(res.body.data.priceSource).toBe('manual');
     });
 
     it('creates a sealed item with a default manual price source', async () => {
@@ -343,6 +363,21 @@ describe('collectibles module', () => {
           imageUrl: 'https://assets.tcgdex.net/en/base/base4/1/high.webp',
         },
       ]);
+    });
+
+    it('returns no results for a non-Pokémon game — TCGdex only covers Pokémon', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const fetchMock = vi.fn(() => Promise.resolve(jsonResponse([{ id: 'should-not-be-called' }])));
+      TCGdex.fetch = fetchMock as unknown as typeof fetch;
+
+      const res = await agent
+        .get('/api/v1/collectibles/search/card')
+        .query({ q: 'Luffy', tcgType: 'onepiece' })
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toEqual([]);
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 });
