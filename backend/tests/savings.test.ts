@@ -173,4 +173,50 @@ describe('savings module', () => {
       expect(res.body.data.reachedMilestones).toHaveLength(0);
     });
   });
+
+  describe('GET /:id/milestones', () => {
+    it('splits reached (with date) from next (with progress and missing amount)', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/savings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Fonds urgence', targetAmount: 10000, type: 'custom' });
+      const goalId = createRes.body.data.id as string;
+
+      await agent
+        .post(`/api/v1/savings/${goalId}/deposit`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 6000 });
+
+      const res = await agent
+        .get(`/api/v1/savings/${goalId}/milestones`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      const reachedNames = res.body.data.reached.map((m: { name: string }) => m.name);
+      expect(reachedNames).toEqual(expect.arrayContaining(['25%', '50%']));
+      expect(res.body.data.reached[0].reachedAt).toBeTruthy();
+
+      const next75 = res.body.data.next.find((m: { percentage: number }) => m.percentage === 75);
+      expect(next75).toMatchObject({ amount: 7500, missingAmount: 1500 });
+      expect(next75.progress).toBeCloseTo(0.8, 5);
+    });
+
+    it('returns no milestones for a zero-target goal', async () => {
+      const { agent, accessToken, userId } = await registerAndGetToken();
+      const [goal] = await db
+        .select()
+        .from(schema.savingsGoals)
+        .where(eq(schema.savingsGoals.userId, userId))
+        .limit(1);
+
+      const res = await agent
+        .get(`/api/v1/savings/${goal!.id}/milestones`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.reached).toHaveLength(0);
+      expect(res.body.data.next).toHaveLength(0);
+    });
+  });
 });

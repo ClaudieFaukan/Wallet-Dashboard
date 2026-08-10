@@ -1,21 +1,22 @@
 import { useState } from 'react';
-import { CheckCircle2, Circle, Pencil, PlusCircle } from 'lucide-react';
+import { CheckCircle2, Pencil, PlusCircle } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
+import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { CircularProgress } from '../../../components/charts/CircularProgress';
+import { ProgressBar } from '../../../components/charts/ProgressBar';
 import { formatDate } from '../../../lib/format';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { SavingsGoal } from '../../../types/api';
-import { useSavingsDeposits } from '../hooks/useSavings';
+import { useSavingsDeposits, useSavingsMilestones } from '../hooks/useSavings';
 import { DepositDrawer } from './DepositDrawer';
 import { EditGoalDrawer } from './EditGoalDrawer';
-
-const MILESTONE_PERCENTAGES = [25, 50, 75, 100];
 
 export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
   const [depositOpen, setDepositOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const { data: deposits } = useSavingsDeposits(goal.id);
+  const { data: milestones } = useSavingsMilestones(goal.id);
   const { formatCents } = useFormatCurrency();
   const pct = goal.targetAmount > 0 ? (goal.currentAmount / goal.targetAmount) * 100 : 0;
 
@@ -42,14 +43,26 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center gap-3 border-t border-border pt-3">
-        {MILESTONE_PERCENTAGES.map((p) => (
-          <div key={p} className="flex items-center gap-1 text-xs text-text-muted">
-            {pct >= p ? <CheckCircle2 size={14} className="text-accent-2" /> : <Circle size={14} />}
-            {p}%
-          </div>
-        ))}
-      </div>
+      {milestones && (milestones.reached.length > 0 || milestones.next.length > 0) && (
+        <div className="mt-4 space-y-2 border-t border-border pt-3">
+          <p className="text-xs text-text-muted">Jalons</p>
+          {milestones.reached.map((m) => (
+            <div key={m.id} className="flex items-center justify-between text-xs">
+              <span className="flex items-center gap-1.5 text-text-primary">
+                <CheckCircle2 size={13} className="text-accent-2" /> {m.name}
+              </span>
+              <Badge variant="success">{m.reachedAt ? formatDate(m.reachedAt) : ''}</Badge>
+            </div>
+          ))}
+          {milestones.next.slice(0, 1).map((m) => (
+            <ProgressBar
+              key={m.percentage}
+              value={m.progress * 100}
+              label={`Prochain : ${m.percentage}% — manque ${formatCents(m.missingAmount)}`}
+            />
+          ))}
+        </div>
+      )}
 
       {deposits && deposits.length > 0 && (
         <div className="mt-3 border-t border-border pt-3">

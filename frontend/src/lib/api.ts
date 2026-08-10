@@ -35,6 +35,7 @@ import type {
   ProjectionResult,
   SavingsDeposit,
   SavingsGoal,
+  SavingsMilestonesView,
   SettingsStatus,
   SyncPricesResult,
   TestSettingInput,
@@ -209,6 +210,8 @@ export const api = {
       unwrap(client.post<ApiResponse<DepositResult>>(`/savings/${id}/deposit`, { amount })),
     deposits: (id: string) =>
       unwrap(client.get<ApiResponse<SavingsDeposit[]>>(`/savings/${id}/deposits`)),
+    milestones: (id: string) =>
+      unwrap(client.get<ApiResponse<SavingsMilestonesView>>(`/savings/${id}/milestones`)),
   },
 
   investments: {

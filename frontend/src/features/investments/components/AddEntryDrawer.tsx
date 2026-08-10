@@ -3,7 +3,9 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useMilestoneCelebration } from '../../../components/ui/MilestoneCelebration';
 import { getErrorMessage } from '../../../lib/api';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { useAddEntry } from '../hooks/useInvestments';
 
 export function AddEntryDrawer({
@@ -20,6 +22,8 @@ export function AddEntryDrawer({
   const [portfolioValue, setPortfolioValue] = useState('0');
   const addEntry = useAddEntry();
   const toast = useToast();
+  const celebrate = useMilestoneCelebration();
+  const { formatCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,7 +39,7 @@ export function AddEntryDrawer({
       {
         onSuccess: (result) => {
           if (result.reachedMilestones.length > 0) {
-            toast.success('Nouveau jalon franchi !');
+            celebrate(result.reachedMilestones.map((m) => formatCents(m.amount)));
           } else {
             toast.success('Entrée DCA enregistrée');
           }

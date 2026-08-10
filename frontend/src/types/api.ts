@@ -183,6 +183,11 @@ export interface SavingsMilestone {
   reachedAt: string | null;
 }
 
+export interface SavingsMilestonesView {
+  reached: SavingsMilestone[];
+  next: { percentage: number; amount: number; progress: number; missingAmount: number }[];
+}
+
 export interface SavingsDeposit {
   id: string;
   goalId: string;
@@ -246,7 +251,7 @@ export interface AddEntryResult {
 
 export interface InvestmentMilestonesView {
   reached: InvestmentMilestoneRow[];
-  next: { amount: number; progress: number }[];
+  next: { amount: number; progress: number; missingAmount: number }[];
   currentTotal: number;
 }
 

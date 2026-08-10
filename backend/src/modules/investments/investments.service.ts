@@ -104,6 +104,7 @@ export class InvestmentsService {
     const next = MILESTONES_CENTS.filter((m) => !reachedAmounts.has(m)).map((amount) => ({
       amount,
       progress: Math.min(currentTotal / amount, 1),
+      missingAmount: Math.max(amount - currentTotal, 0),
     }));
 
     return { reached, next, currentTotal };

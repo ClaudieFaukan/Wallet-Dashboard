@@ -23,3 +23,4 @@ savingsRouter.patch('/:id', validate(updateSavingsGoalSchema), savingsController
 savingsRouter.delete('/:id', savingsController.delete);
 savingsRouter.post('/:id/deposit', validate(depositSchema), savingsController.deposit);
 savingsRouter.get('/:id/deposits', savingsController.listDeposits);
+savingsRouter.get('/:id/milestones', savingsController.getMilestones);

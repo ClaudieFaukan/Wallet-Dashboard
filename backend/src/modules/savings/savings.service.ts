@@ -76,6 +76,31 @@ export class SavingsService {
       .orderBy(asc(schema.savingsDeposits.date));
   }
 
+  async getMilestones(userId: string, id: string) {
+    const goal = await this.getById(userId, id);
+    const reached = await this.db
+      .select()
+      .from(schema.savingsMilestones)
+      .where(eq(schema.savingsMilestones.goalId, id))
+      .orderBy(schema.savingsMilestones.targetAmount);
+
+    // Mirrors checkMilestones()'s own early-out — a target of 0 never crosses a percentage.
+    if (goal.targetAmount <= 0) return { reached, next: [] };
+
+    const reachedNames = new Set(reached.map((m) => m.name));
+    const next = MILESTONE_PERCENTAGES.filter((p) => !reachedNames.has(`${p}%`)).map((p) => {
+      const amount = Math.round((goal.targetAmount * p) / 100);
+      return {
+        percentage: p,
+        amount,
+        progress: Math.min(goal.currentAmount / amount, 1),
+        missingAmount: Math.max(amount - goal.currentAmount, 0),
+      };
+    });
+
+    return { reached, next };
+  }
+
   private async checkMilestones(goal: SavingsGoal) {
     if (goal.targetAmount <= 0) return [];
 

@@ -87,4 +87,14 @@ export class SavingsController {
       next(err);
     }
   };
+
+  getMilestones: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const milestones = await this.savingsService.getMilestones(user.id, req.params.id as string);
+      res.json({ success: true, data: milestones });
+    } catch (err) {
+      next(err);
+    }
+  };
 }

@@ -14,6 +14,7 @@
     "@tanstack/react-query": "^5.101.4",
     "@wallet-dashboard/shared": "*",
     "axios": "^1.19.0",
+    "canvas-confetti": "^1.9.4",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.30.0",
     "react": "^18.3.1",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.5",

@@ -12,6 +12,13 @@ export function useSavingsDeposits(goalId: string) {
   return useQuery({ queryKey: [...savingsKey, goalId, 'deposits'], queryFn: () => api.savings.deposits(goalId) });
 }
 
+export function useSavingsMilestones(goalId: string) {
+  return useQuery({
+    queryKey: [...savingsKey, goalId, 'milestones'],
+    queryFn: () => api.savings.milestones(goalId),
+  });
+}
+
 export function useCreateSavingsGoal() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -36,6 +43,7 @@ export function useDeposit() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: savingsKey });
       queryClient.invalidateQueries({ queryKey: [...savingsKey, variables.id, 'deposits'] });
+      queryClient.invalidateQueries({ queryKey: [...savingsKey, variables.id, 'milestones'] });
     },
   });
 }

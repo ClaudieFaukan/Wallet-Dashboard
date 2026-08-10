@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useMilestoneCelebration } from '../../../components/ui/MilestoneCelebration';
 import { getErrorMessage } from '../../../lib/api';
 import type { SavingsGoal } from '../../../types/api';
 import { useDeposit } from '../hooks/useSavings';
@@ -19,6 +20,7 @@ export function DepositDrawer({
   const [amount, setAmount] = useState('0');
   const deposit = useDeposit();
   const toast = useToast();
+  const celebrate = useMilestoneCelebration();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -27,7 +29,7 @@ export function DepositDrawer({
       {
         onSuccess: (result) => {
           if (result.reachedMilestones.length > 0) {
-            toast.success(`Jalon atteint : ${result.reachedMilestones.map((m) => m.name).join(', ')}`);
+            celebrate(result.reachedMilestones.map((m) => m.name));
           } else {
             toast.success('Dépôt enregistré');
           }

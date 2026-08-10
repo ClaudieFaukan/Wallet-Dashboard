@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { ToastContainer } from '../ui/Toast';
+import { MilestoneCelebrationOverlay } from '../ui/MilestoneCelebration';
 
 export function AppLayout() {
   return (
@@ -10,6 +11,7 @@ export function AppLayout() {
         <Outlet />
       </main>
       <ToastContainer />
+      <MilestoneCelebrationOverlay />
     </div>
   );
 }
