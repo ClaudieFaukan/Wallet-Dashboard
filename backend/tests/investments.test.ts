@@ -1,11 +1,22 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createApp } from '../src/app.js';
 import { db } from '../src/config/database.js';
 import * as schema from '../src/db/schema/index.js';
 
 const app = createApp();
+
+// stock_quotes is a global (non-user-scoped) cache table — not covered by tests/setup.ts's
+// users/refresh_tokens truncate — so it must be cleared here to keep the quote tests isolated
+// from previous runs (same pitfall documented for the TCGdex cache in collectibles tests).
+beforeEach(async () => {
+  await db.execute(sql`TRUNCATE TABLE stock_quotes`);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 async function registerAndGetToken() {
   const agent = request.agent(app);
@@ -227,6 +238,58 @@ describe('investments module', () => {
       expect(res.status).toBe(200);
       const expected = Math.round(100_000 * Math.pow(1 + 0.12 / 12, 12));
       expect(res.body.data.points[11].value).toBe(expected);
+    });
+  });
+
+  describe('GET /quote', () => {
+    it('returns 501 when Alpha Vantage is not configured', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const res = await agent
+        .get('/api/v1/investments/quote')
+        .query({ symbol: 'NOCONFIG.TEST' })
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(501);
+      expect(res.body.error.code).toBe('ALPHA_VANTAGE_NOT_CONFIGURED');
+    });
+
+    it('fetches live once then serves the cached quote for the rest of the day', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ alphaVantageApiKey: 'test-key' });
+
+      const fetchMock = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              'Global Quote': {
+                '01. symbol': 'IWDA.AS',
+                '05. price': '92.10',
+                '10. change percent': '0.55%',
+              },
+            }),
+        }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const first = await agent
+        .get('/api/v1/investments/quote')
+        .query({ symbol: 'IWDA.AS' })
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(first.status).toBe(200);
+      expect(first.body.data.price).toBe(92.1);
+      expect(first.body.data.changePercent).toBe(0.55);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const second = await agent
+        .get('/api/v1/investments/quote')
+        .query({ symbol: 'IWDA.AS' })
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(second.status).toBe(200);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
   });
 });

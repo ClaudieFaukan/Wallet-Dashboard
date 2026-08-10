@@ -10,7 +10,7 @@ import { formatDate } from '../../lib/format';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { AddEntryDrawer } from './components/AddEntryDrawer';
 import { DcaSimulator } from './components/DcaSimulator';
-import { useInvestmentAccount, useInvestmentEntries } from './hooks/useInvestments';
+import { useInvestmentAccount, useInvestmentEntries, useStockQuote } from './hooks/useInvestments';
 
 export function InvestmentDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +21,8 @@ export function InvestmentDetailPage() {
   const { formatCents } = useFormatCurrency();
 
   const totalInvested = (entries ?? []).reduce((sum, e) => sum + e.amountInvested, 0);
+  const latestTicker = [...(entries ?? [])].reverse().find((e) => e.ticker)?.ticker ?? null;
+  const { data: quote } = useStockQuote(latestTicker);
 
   return (
     <div>
@@ -58,6 +60,16 @@ export function InvestmentDetailPage() {
             </div>
           </Card>
         </div>
+
+        {quote && (
+          <Card>
+            <p className="text-sm text-text-secondary">Cours — {quote.symbol}</p>
+            <div className="mt-1 flex items-center gap-3">
+              <p className="font-mono text-lg font-semibold text-text-primary">{quote.price}</p>
+              <Variation percent={quote.changePercent} />
+            </div>
+          </Card>
+        )}
 
         {entries && entries.length > 0 && (
           <AreaChartCard

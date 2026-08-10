@@ -71,6 +71,7 @@ export class InvestmentsService {
         amountInvested: input.amountInvested,
         portfolioValue: input.portfolioValue,
         notes: input.notes,
+        ticker: input.ticker,
       })
       .returning();
 

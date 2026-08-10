@@ -4,12 +4,17 @@ import type {
   CreateEntryInput,
   CreateInvestmentAccountInput,
   ProjectionQuery,
+  QuoteQuery,
   UpdateInvestmentAccountInput,
 } from './investments.schema.js';
 import type { InvestmentsService } from './investments.service.js';
+import type { QuoteService } from './quote.service.js';
 
 export class InvestmentsController {
-  constructor(private readonly investmentsService: InvestmentsService) {}
+  constructor(
+    private readonly investmentsService: InvestmentsService,
+    private readonly quoteService: QuoteService,
+  ) {}
 
   list: RequestHandler = async (req, res, next) => {
     try {
@@ -112,6 +117,17 @@ export class InvestmentsController {
       const { user } = req as AuthenticatedRequest;
       const milestones = await this.investmentsService.getMilestones(user.id);
       res.json({ success: true, data: milestones });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getQuote: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const { symbol } = req.query as unknown as QuoteQuery;
+      const quote = await this.quoteService.getQuote(user.id, symbol);
+      res.json({ success: true, data: quote });
     } catch (err) {
       next(err);
     }

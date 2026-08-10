@@ -8,6 +8,7 @@ export const updateSettingsSchema = z.object({
   poketraceApiKey: z.string().optional(),
   revolutClientId: z.string().optional(),
   revolutClientSecret: z.string().optional(),
+  alphaVantageApiKey: z.string().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
@@ -28,5 +29,6 @@ export const testSettingSchema = z.discriminatedUnion('section', [
     revolutClientId: z.string().min(1),
     revolutClientSecret: z.string().min(1),
   }),
+  z.object({ section: z.literal('alphaVantage'), alphaVantageApiKey: z.string().min(1) }),
 ]);
 export type TestSettingInput = z.infer<typeof testSettingSchema>;

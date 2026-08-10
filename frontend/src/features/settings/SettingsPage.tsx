@@ -108,7 +108,8 @@ type FieldName =
   | 'pokemonPriceTrackerApiKey'
   | 'poketraceApiKey'
   | 'revolutClientId'
-  | 'revolutClientSecret';
+  | 'revolutClientSecret'
+  | 'alphaVantageApiKey';
 
 interface IntegrationGroupProps {
   title: string;
@@ -274,6 +275,16 @@ function IntegrationsSection() {
           onTest={(v) => handleTest('revolut', v)}
           testing={testSetting.isPending}
           testResult={testResults.revolut}
+        />
+        <IntegrationGroup
+          title="Alpha Vantage (cours ETF/actions)"
+          configured={Boolean(status?.alphaVantageConfigured)}
+          fields={[{ name: 'alphaVantageApiKey', label: 'Clé API' }]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('alphaVantage', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.alphaVantage}
         />
       </div>
     </Card>

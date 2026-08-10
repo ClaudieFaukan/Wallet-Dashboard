@@ -41,6 +41,7 @@ import type {
   SavingsGoal,
   SavingsMilestonesView,
   SettingsStatus,
+  StockQuote,
   SyncPricesResult,
   TestSettingInput,
   TestSettingResult,
@@ -241,6 +242,8 @@ export const api = {
       ),
     milestones: () =>
       unwrap(client.get<ApiResponse<InvestmentMilestonesView>>('/investments/milestones')),
+    quote: (symbol: string) =>
+      unwrap(client.get<ApiResponse<StockQuote>>('/investments/quote', { params: { symbol } })),
   },
 
   crypto: {

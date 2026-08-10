@@ -228,6 +228,7 @@ export interface InvestmentEntry {
   amountInvested: number;
   portfolioValue: number;
   notes: string | null;
+  ticker: string | null;
 }
 
 export interface CreateEntryInput {
@@ -235,6 +236,14 @@ export interface CreateEntryInput {
   amountInvested: number;
   portfolioValue: number;
   notes?: string;
+  ticker?: string;
+}
+
+export interface StockQuote {
+  symbol: string;
+  price: number;
+  changePercent: number;
+  fetchedAt: string;
 }
 
 export interface InvestmentMilestoneRow {
@@ -529,6 +538,7 @@ export interface SettingsStatus {
   pokemonPriceTrackerConfigured: boolean;
   poketraceConfigured: boolean;
   revolutConfigured: boolean;
+  alphaVantageConfigured: boolean;
 }
 
 export interface UpdateSettingsInput {
@@ -539,6 +549,7 @@ export interface UpdateSettingsInput {
   poketraceApiKey?: string;
   revolutClientId?: string;
   revolutClientSecret?: string;
+  alphaVantageApiKey?: string;
 }
 
 export type TestSettingInput =
@@ -546,7 +557,8 @@ export type TestSettingInput =
   | { section: 'cryptoCom'; cryptoComApiKey: string; cryptoComApiSecret: string }
   | { section: 'pokemonPriceTracker'; pokemonPriceTrackerApiKey: string }
   | { section: 'poketrace'; poketraceApiKey: string }
-  | { section: 'revolut'; revolutClientId: string; revolutClientSecret: string };
+  | { section: 'revolut'; revolutClientId: string; revolutClientSecret: string }
+  | { section: 'alphaVantage'; alphaVantageApiKey: string };
 
 export interface TestSettingResult {
   success: boolean;

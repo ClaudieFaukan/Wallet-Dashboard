@@ -6,19 +6,21 @@ import { CollectiblesService } from './collectibles.service.js';
 
 const collectiblesService = new CollectiblesService(db, settingsService);
 
-/** Single-user app (see AuthService.register) — sync runs for whichever one user exists. */
+/** Runs for every registered user (normally just one — see AuthService.register — plus the
+ * read-only demo account from FEAT-09, which simply has no API keys configured and no-ops). */
 export function scheduleCollectiblesSync(): void {
   cron.schedule('0 3 * * *', async () => {
-    const [user] = await db.select({ id: schema.users.id }).from(schema.users).limit(1);
-    if (!user) return;
+    const users = await db.select({ id: schema.users.id }).from(schema.users);
 
-    try {
-      const result = await collectiblesService.syncPrices(user.id);
-      console.log(
-        `collectibles sync-prices: ${result.synced} synced, ${result.skipped} skipped, ${result.errors} errors`,
-      );
-    } catch (err) {
-      console.error('collectibles sync-prices cron failed:', err);
+    for (const user of users) {
+      try {
+        const result = await collectiblesService.syncPrices(user.id);
+        console.log(
+          `collectibles sync-prices (${user.id}): ${result.synced} synced, ${result.skipped} skipped, ${result.errors} errors`,
+        );
+      } catch (err) {
+        console.error(`collectibles sync-prices cron failed for ${user.id}:`, err);
+      }
     }
   });
 }

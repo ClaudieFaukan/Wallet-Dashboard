@@ -27,6 +27,13 @@ export function LoginPage() {
     }
   }
 
+  function handleDemoLogin() {
+    login.mutate(
+      { email: 'demo@finance.app', password: 'demo123' },
+      { onSuccess: () => navigate('/', { replace: true }) },
+    );
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-bg-base px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-bg-surface p-8">
@@ -86,6 +93,17 @@ export function LoginPage() {
                 : 'Créer le compte'}
           </Button>
         </form>
+
+        {mode === 'login' && (
+          <Button
+            variant="secondary"
+            disabled={login.isPending}
+            onClick={handleDemoLogin}
+            className="mt-3 w-full"
+          >
+            Accéder au compte démo
+          </Button>
+        )}
 
         <button
           onClick={() => setMode(mode === 'login' ? 'register' : 'login')}

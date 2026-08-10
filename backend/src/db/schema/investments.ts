@@ -23,6 +23,8 @@ export const investmentEntries = pgTable('investment_entries', {
   amountInvested: integer('amount_invested').notNull(),
   portfolioValue: integer('portfolio_value').notNull(),
   notes: text('notes'),
+  // Optional ETF/stock ticker (e.g. "IWDA.AS") — lets Alpha Vantage sync a live quote for it.
+  ticker: text('ticker'),
   ...timestamps,
 });
 

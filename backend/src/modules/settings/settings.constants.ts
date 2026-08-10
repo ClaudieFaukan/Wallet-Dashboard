@@ -7,6 +7,7 @@ export const SETTINGS_FIELDS = {
   poketraceApiKey: 'poketrace_api_key',
   revolutClientId: 'revolut_client_id',
   revolutClientSecret: 'revolut_client_secret',
+  alphaVantageApiKey: 'alpha_vantage_api_key',
 } as const;
 
 export type SettingsField = keyof typeof SETTINGS_FIELDS;

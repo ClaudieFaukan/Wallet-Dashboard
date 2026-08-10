@@ -43,7 +43,7 @@ export class AuthService {
     await this.createDefaultSavingsGoals(user.id);
     await this.createDefaultCategories(user.id);
 
-    return this.issueTokens(user.id, user.email);
+    return this.issueTokens(user.id, user.email, false, user.isDemo);
   }
 
   async login(input: LoginInput): Promise<AuthTokens> {
@@ -56,7 +56,7 @@ export class AuthService {
     const valid = await bcrypt.compare(input.password, user.passwordHash);
     if (!valid) throw new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
 
-    return this.issueTokens(user.id, user.email, input.rememberMe);
+    return this.issueTokens(user.id, user.email, input.rememberMe, user.isDemo);
   }
 
   async refresh(rawToken: string | undefined): Promise<AuthTokens> {
@@ -84,7 +84,7 @@ export class AuthService {
     const [user] = await this.db.select().from(schema.users).where(eq(schema.users.id, row.userId));
     if (!user) throw new AppError(401, 'UNAUTHORIZED', 'User no longer exists');
 
-    return this.issueTokens(user.id, user.email, row.rememberMe);
+    return this.issueTokens(user.id, user.email, row.rememberMe, user.isDemo);
   }
 
   async logout(rawToken: string | undefined): Promise<void> {
@@ -142,8 +142,9 @@ export class AuthService {
     userId: string,
     email: string,
     rememberMe = false,
+    isDemo = false,
   ): Promise<AuthTokens> {
-    const accessToken = jwt.sign({ sub: userId, email }, env.JWT_SECRET, {
+    const accessToken = jwt.sign({ sub: userId, email, isDemo }, env.JWT_SECRET, {
       expiresIn: env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'],
     });
 

@@ -1,9 +1,10 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight,
   Bitcoin,
   LayoutDashboard,
   Landmark,
+  LogOut,
   PiggyBank,
   Settings,
   Sparkles,
@@ -12,6 +13,7 @@ import {
   Wallet2,
 } from 'lucide-react';
 import { useAuthStore, getEmailFromToken } from '../../store/authStore';
+import { useLogout } from '../../features/auth/hooks/useAuth';
 
 const navItems = [
   { to: '/', label: 'Synthèse', icon: LayoutDashboard, end: true },
@@ -36,6 +38,12 @@ export function Sidebar() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const email = getEmailFromToken(accessToken);
   const initial = email ? email[0]!.toUpperCase() : '?';
+  const logout = useLogout();
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) });
+  }
 
   return (
     <aside className="flex h-screen w-[200px] shrink-0 flex-col bg-bg-sidebar">
@@ -63,7 +71,16 @@ export function Sidebar() {
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-bg-elevated text-sm font-semibold text-text-primary">
           {initial}
         </div>
-        {email && <p className="truncate text-xs text-text-secondary">{email}</p>}
+        {email && <p className="min-w-0 flex-1 truncate text-xs text-text-secondary">{email}</p>}
+        <button
+          type="button"
+          title="Se déconnecter"
+          onClick={handleLogout}
+          disabled={logout.isPending}
+          className="shrink-0 rounded-md p-1.5 text-text-muted hover:bg-bg-elevated hover:text-text-primary"
+        >
+          <LogOut size={16} />
+        </button>
       </div>
     </aside>
   );

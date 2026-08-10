@@ -18,8 +18,14 @@ export const createEntrySchema = z.object({
   amountInvested: z.number().int(),
   portfolioValue: z.number().int(),
   notes: z.string().optional(),
+  ticker: z.string().optional(),
 });
 export type CreateEntryInput = z.infer<typeof createEntrySchema>;
+
+export const quoteQuerySchema = z.object({
+  symbol: z.string().min(1),
+});
+export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
 
 export const projectionQuerySchema = z.object({
   monthlyContribution: z.coerce.number().int().default(0),

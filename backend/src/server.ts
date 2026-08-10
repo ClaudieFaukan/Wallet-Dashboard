@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { scheduleCollectiblesSync } from './modules/collectibles/collectibles.cron.js';
 import { scheduleExchangeRatesSync } from './modules/exchange-rates/exchange-rates.cron.js';
+import { scheduleQuoteSync } from './modules/investments/quote.cron.js';
 
 const app = createApp();
 
@@ -11,3 +12,4 @@ app.listen(env.PORT, () => {
 
 scheduleCollectiblesSync();
 scheduleExchangeRatesSync();
+scheduleQuoteSync();

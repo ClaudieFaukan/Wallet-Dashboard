@@ -20,6 +20,7 @@ export function AddEntryDrawer({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amountInvested, setAmountInvested] = useState('0');
   const [portfolioValue, setPortfolioValue] = useState('0');
+  const [ticker, setTicker] = useState('');
   const addEntry = useAddEntry();
   const toast = useToast();
   const celebrate = useMilestoneCelebration();
@@ -34,6 +35,7 @@ export function AddEntryDrawer({
           date: new Date(date).toISOString(),
           amountInvested: Math.round(Number(amountInvested) * 100),
           portfolioValue: Math.round(Number(portfolioValue) * 100),
+          ticker: ticker || undefined,
         },
       },
       {
@@ -68,6 +70,12 @@ export function AddEntryDrawer({
           value={portfolioValue}
           onChange={(e) => setPortfolioValue(e.target.value)}
           required
+        />
+        <Input
+          label="Ticker (optionnel — ex. IWDA.AS)"
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value)}
+          placeholder="Suivi du cours via Alpha Vantage"
         />
         <Button type="submit" disabled={addEntry.isPending}>
           {addEntry.isPending ? 'Enregistrement…' : 'Ajouter'}

@@ -6,8 +6,12 @@ import { getEthBalanceWei } from '../../integrations/etherscan/etherscan.client.
 import { getAccountSummary } from '../../integrations/cryptocom/cryptocom.client.js';
 import { search as searchPokemonPriceTracker } from '../../integrations/collectibles/pokemonpricetracker.provider.js';
 import { search as searchPoketrace } from '../../integrations/collectibles/poketrace.provider.js';
+import { getQuote } from '../../integrations/alphavantage/alphavantage.client.js';
 import { SETTINGS_FIELDS, type SettingsField } from './settings.constants.js';
 import type { TestSettingInput, UpdateSettingsInput } from './settings.schema.js';
+
+// IBM is Alpha Vantage's own documented example symbol for GLOBAL_QUOTE — always listed, safe test pick.
+const ALPHA_VANTAGE_TEST_SYMBOL = 'IBM';
 
 // Any Ethereum address works for a balance-check test call — Vitalik Buterin's
 // public address is reused here (same one already verified live against
@@ -40,6 +44,7 @@ export class SettingsService {
       pokemonPriceTrackerConfigured: has('pokemonPriceTrackerApiKey'),
       poketraceConfigured: has('poketraceApiKey'),
       revolutConfigured: has('revolutClientId') && has('revolutClientSecret'),
+      alphaVantageConfigured: has('alphaVantageApiKey'),
     };
   }
 
@@ -107,6 +112,13 @@ export class SettingsService {
             success: true,
             message:
               'Identifiants enregistrés — la validation complète se fait en connectant le compte depuis Comptes.',
+          };
+        }
+        case 'alphaVantage': {
+          const quote = await getQuote(ALPHA_VANTAGE_TEST_SYMBOL, input.alphaVantageApiKey);
+          return {
+            success: true,
+            message: `Clé Alpha Vantage valide (${ALPHA_VANTAGE_TEST_SYMBOL} : ${quote.price}).`,
           };
         }
       }

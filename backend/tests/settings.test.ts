@@ -36,6 +36,7 @@ describe('settings module', () => {
       pokemonPriceTrackerConfigured: false,
       poketraceConfigured: false,
       revolutConfigured: false,
+      alphaVantageConfigured: false,
     });
   });
 
@@ -132,6 +133,30 @@ describe('settings module', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.success).toBe(false);
+    });
+
+    it('reports success for a valid Alpha Vantage key', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                'Global Quote': { '01. symbol': 'IBM', '05. price': '123.45', '10. change percent': '1.23%' },
+              }),
+          }),
+        ),
+      );
+
+      const res = await agent
+        .post('/api/v1/settings/test')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ section: 'alphaVantage', alphaVantageApiKey: 'a-key' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.success).toBe(true);
     });
 
     it('acknowledges Revolut credentials without a live network call', async () => {

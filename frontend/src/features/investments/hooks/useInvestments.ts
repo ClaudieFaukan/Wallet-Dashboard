@@ -46,3 +46,13 @@ export function useAddEntry() {
     },
   });
 }
+
+export function useStockQuote(symbol: string | null) {
+  return useQuery({
+    queryKey: ['stock-quote', symbol],
+    queryFn: () => api.investments.quote(symbol as string),
+    enabled: Boolean(symbol),
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+}
