@@ -18,6 +18,10 @@ const platformLabels: Record<CryptoWallet['platform'], string> = {
   metamask: 'MetaMask',
   phantom: 'Phantom',
   crypto_com: 'Crypto.com',
+  binance: 'Binance',
+  bybit: 'Bybit',
+  coinbase: 'Coinbase',
+  kraken: 'Kraken',
 };
 
 export function WalletCard({ wallet }: { wallet: CryptoWallet }) {

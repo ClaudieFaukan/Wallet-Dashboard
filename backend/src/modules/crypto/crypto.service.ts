@@ -17,6 +17,8 @@ import {
   lamportsToSol,
 } from '../../integrations/solana/solana.client.js';
 import { getTokenPricesUsd } from '../../integrations/coingecko/coingecko.client.js';
+import { getAccountBalances, getAssetPriceUsd } from '../../integrations/binance/binance.client.js';
+import { getWalletBalanceUsd } from '../../integrations/bybit/bybit.client.js';
 import { AppError } from '../../shared/utils/AppError.js';
 import type { CreateWalletInput, UpdateWalletInput } from './crypto.schema.js';
 
@@ -99,6 +101,18 @@ export class CryptoService {
           'CRYPTO_COM_NOT_CONFIGURED',
           'Crypto.com sync is not configured yet',
         );
+      case 'binance': {
+        const keys = await this.requireExchangeKeys(userId, 'binanceApiKey', 'binanceApiSecret', 'BINANCE');
+        return this.syncBinance(wallet, keys.apiKey, keys.apiSecret);
+      }
+      case 'bybit': {
+        const keys = await this.requireExchangeKeys(userId, 'bybitApiKey', 'bybitApiSecret', 'BYBIT');
+        return this.syncBybit(wallet, keys.apiKey, keys.apiSecret);
+      }
+      case 'coinbase':
+        throw new AppError(501, 'COINBASE_NOT_CONFIGURED', 'Coinbase sync is not configured yet');
+      case 'kraken':
+        throw new AppError(501, 'KRAKEN_NOT_CONFIGURED', 'Kraken sync is not configured yet');
     }
   }
 
@@ -126,7 +140,40 @@ export class CryptoService {
         return { tokens: await this.getSolanaTokens(wallet.address), note: null };
       case 'crypto_com':
         return { tokens: [], note: "Détail des tokens indisponible pour Crypto.com pour l'instant." };
+      case 'binance': {
+        const keys = await this.requireExchangeKeys(userId, 'binanceApiKey', 'binanceApiSecret', 'BINANCE');
+        return { tokens: await this.getBinanceTokens(keys.apiKey, keys.apiSecret), note: null };
+      }
+      case 'bybit': {
+        const keys = await this.requireExchangeKeys(userId, 'bybitApiKey', 'bybitApiSecret', 'BYBIT');
+        return { tokens: await this.getBybitTokens(keys.apiKey, keys.apiSecret), note: null };
+      }
+      case 'coinbase':
+        return { tokens: [], note: "Détail des tokens indisponible pour Coinbase pour l'instant." };
+      case 'kraken':
+        return { tokens: [], note: "Détail des tokens indisponible pour Kraken pour l'instant." };
     }
+  }
+
+  /** Resolves an exchange's API key/secret pair from Settings, or throws 501 if either is missing. */
+  private async requireExchangeKeys(
+    userId: string,
+    keyField: 'binanceApiKey' | 'bybitApiKey',
+    secretField: 'binanceApiSecret' | 'bybitApiSecret',
+    exchangeName: string,
+  ): Promise<{ apiKey: string; apiSecret: string }> {
+    const [apiKey, apiSecret] = await Promise.all([
+      this.settingsService.getValue(userId, keyField),
+      this.settingsService.getValue(userId, secretField),
+    ]);
+    if (!apiKey || !apiSecret) {
+      throw new AppError(
+        501,
+        `${exchangeName}_NOT_CONFIGURED`,
+        `${exchangeName} sync is not configured yet`,
+      );
+    }
+    return { apiKey, apiSecret };
   }
 
   private async getEthereumTokens(address: string, apiKey: string): Promise<WalletToken[]> {
@@ -195,6 +242,59 @@ export class CryptoService {
       })
       .returning();
 
+    return snapshot;
+  }
+
+  private async getBinanceTokens(apiKey: string, apiSecret: string): Promise<WalletToken[]> {
+    const balances = await getAccountBalances(apiKey, apiSecret);
+    const tokens = await Promise.all(
+      balances.map(async (b): Promise<WalletToken> => {
+        const amount = Number(b.free) + Number(b.locked);
+        const priceUsd = await getAssetPriceUsd(b.asset);
+        return {
+          symbol: b.asset,
+          name: null,
+          amount,
+          priceUsd,
+          valueUsdCents: priceUsd != null ? Math.round(amount * priceUsd * 100) : null,
+          change24hPct: null,
+        };
+      }),
+    );
+    return tokens;
+  }
+
+  private async getBybitTokens(apiKey: string, apiSecret: string): Promise<WalletToken[]> {
+    const balances = await getWalletBalanceUsd(apiKey, apiSecret);
+    return balances.map((b) => ({
+      symbol: b.coin,
+      name: null,
+      amount: b.amount,
+      priceUsd: b.amount > 0 ? b.valueUsd / b.amount : null,
+      valueUsdCents: Math.round(b.valueUsd * 100),
+      change24hPct: null,
+    }));
+  }
+
+  private async syncBinance(wallet: CryptoWallet, apiKey: string, apiSecret: string) {
+    const tokens = await this.getBinanceTokens(apiKey, apiSecret);
+    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
+
+    const [snapshot] = await this.db
+      .insert(schema.cryptoSnapshots)
+      .values({ walletId: wallet.id, totalValueUsd, rawData: { tokens } })
+      .returning();
+    return snapshot;
+  }
+
+  private async syncBybit(wallet: CryptoWallet, apiKey: string, apiSecret: string) {
+    const tokens = await this.getBybitTokens(apiKey, apiSecret);
+    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
+
+    const [snapshot] = await this.db
+      .insert(schema.cryptoSnapshots)
+      .values({ walletId: wallet.id, totalValueUsd, rawData: { tokens } })
+      .returning();
     return snapshot;
   }
 

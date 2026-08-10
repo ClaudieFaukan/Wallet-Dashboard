@@ -11,7 +11,15 @@ import {
 import { id, timestamps } from './_helpers.js';
 import { users } from './users.js';
 
-export const cryptoPlatformEnum = pgEnum('crypto_platform', ['metamask', 'phantom', 'crypto_com']);
+export const cryptoPlatformEnum = pgEnum('crypto_platform', [
+  'metamask',
+  'phantom',
+  'crypto_com',
+  'binance',
+  'bybit',
+  'coinbase',
+  'kraken',
+]);
 export const cryptoChainEnum = pgEnum('crypto_chain', ['ethereum', 'solana']);
 
 export const cryptoWallets = pgTable('crypto_wallets', {

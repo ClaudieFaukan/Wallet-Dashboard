@@ -37,6 +37,8 @@ describe('settings module', () => {
       poketraceConfigured: false,
       revolutConfigured: false,
       alphaVantageConfigured: false,
+      binanceConfigured: false,
+      bybitConfigured: false,
     });
   });
 
@@ -154,6 +156,53 @@ describe('settings module', () => {
         .post('/api/v1/settings/test')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ section: 'alphaVantage', alphaVantageApiKey: 'a-key' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.success).toBe(true);
+    });
+
+    it('reports success for valid Binance keys', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ balances: [{ asset: 'BTC', free: '0.1', locked: '0' }] }),
+          }),
+        ),
+      );
+
+      const res = await agent
+        .post('/api/v1/settings/test')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ section: 'binance', binanceApiKey: 'key', binanceApiSecret: 'secret' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.success).toBe(true);
+    });
+
+    it('reports success for valid Bybit keys', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                retCode: 0,
+                retMsg: 'OK',
+                result: { list: [{ coin: [{ coin: 'ETH', walletBalance: '1', usdValue: '3000' }] }] },
+              }),
+          }),
+        ),
+      );
+
+      const res = await agent
+        .post('/api/v1/settings/test')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ section: 'bybit', bybitApiKey: 'key', bybitApiSecret: 'secret' });
 
       expect(res.status).toBe(200);
       expect(res.body.data.success).toBe(true);

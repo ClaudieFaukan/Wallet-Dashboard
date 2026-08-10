@@ -8,6 +8,10 @@ export const SETTINGS_FIELDS = {
   revolutClientId: 'revolut_client_id',
   revolutClientSecret: 'revolut_client_secret',
   alphaVantageApiKey: 'alpha_vantage_api_key',
+  binanceApiKey: 'binance_api_key',
+  binanceApiSecret: 'binance_api_secret',
+  bybitApiKey: 'bybit_api_key',
+  bybitApiSecret: 'bybit_api_secret',
 } as const;
 
 export type SettingsField = keyof typeof SETTINGS_FIELDS;

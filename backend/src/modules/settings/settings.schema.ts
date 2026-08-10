@@ -9,6 +9,10 @@ export const updateSettingsSchema = z.object({
   revolutClientId: z.string().optional(),
   revolutClientSecret: z.string().optional(),
   alphaVantageApiKey: z.string().optional(),
+  binanceApiKey: z.string().optional(),
+  binanceApiSecret: z.string().optional(),
+  bybitApiKey: z.string().optional(),
+  bybitApiSecret: z.string().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
@@ -30,5 +34,15 @@ export const testSettingSchema = z.discriminatedUnion('section', [
     revolutClientSecret: z.string().min(1),
   }),
   z.object({ section: z.literal('alphaVantage'), alphaVantageApiKey: z.string().min(1) }),
+  z.object({
+    section: z.literal('binance'),
+    binanceApiKey: z.string().min(1),
+    binanceApiSecret: z.string().min(1),
+  }),
+  z.object({
+    section: z.literal('bybit'),
+    bybitApiKey: z.string().min(1),
+    bybitApiSecret: z.string().min(1),
+  }),
 ]);
 export type TestSettingInput = z.infer<typeof testSettingSchema>;

@@ -352,7 +352,14 @@ export interface ProjectionQuery {
   years?: number;
 }
 
-export type CryptoPlatform = 'metamask' | 'phantom' | 'crypto_com';
+export type CryptoPlatform =
+  | 'metamask'
+  | 'phantom'
+  | 'crypto_com'
+  | 'binance'
+  | 'bybit'
+  | 'coinbase'
+  | 'kraken';
 export type CryptoChain = 'ethereum' | 'solana';
 
 export interface CryptoWallet {
@@ -539,6 +546,8 @@ export interface SettingsStatus {
   poketraceConfigured: boolean;
   revolutConfigured: boolean;
   alphaVantageConfigured: boolean;
+  binanceConfigured: boolean;
+  bybitConfigured: boolean;
 }
 
 export interface UpdateSettingsInput {
@@ -550,6 +559,10 @@ export interface UpdateSettingsInput {
   revolutClientId?: string;
   revolutClientSecret?: string;
   alphaVantageApiKey?: string;
+  binanceApiKey?: string;
+  binanceApiSecret?: string;
+  bybitApiKey?: string;
+  bybitApiSecret?: string;
 }
 
 export type TestSettingInput =
@@ -558,7 +571,9 @@ export type TestSettingInput =
   | { section: 'pokemonPriceTracker'; pokemonPriceTrackerApiKey: string }
   | { section: 'poketrace'; poketraceApiKey: string }
   | { section: 'revolut'; revolutClientId: string; revolutClientSecret: string }
-  | { section: 'alphaVantage'; alphaVantageApiKey: string };
+  | { section: 'alphaVantage'; alphaVantageApiKey: string }
+  | { section: 'binance'; binanceApiKey: string; binanceApiSecret: string }
+  | { section: 'bybit'; bybitApiKey: string; bybitApiSecret: string };
 
 export interface TestSettingResult {
   success: boolean;

@@ -190,5 +190,113 @@ describe('crypto module', () => {
       expect(res.status).toBe(501);
       expect(res.body.error.code).toBe('CRYPTO_COM_NOT_CONFIGURED');
     });
+
+    it('returns 501 for Coinbase and Kraken wallets since they are not implemented', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      for (const platform of ['coinbase', 'kraken'] as const) {
+        const createRes = await agent
+          .post('/api/v1/crypto/wallets')
+          .set('Authorization', `Bearer ${accessToken}`)
+          .send({ name: platform, platform, address: 'account-1', chain: 'ethereum' });
+        const walletId = createRes.body.data.id as string;
+
+        const res = await agent
+          .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+          .set('Authorization', `Bearer ${accessToken}`);
+
+        expect(res.status).toBe(501);
+        expect(res.body.error.code).toBe(`${platform.toUpperCase()}_NOT_CONFIGURED`);
+      }
+    });
+
+    it('syncs a Binance wallet once its API keys are configured', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ binanceApiKey: 'key', binanceApiSecret: 'secret' });
+
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Binance', platform: 'binance', address: 'main', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string | URL) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/api/v3/account')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  balances: [
+                    { asset: 'BTC', free: '0.5', locked: '0' },
+                    { asset: 'USDT', free: '100', locked: '0' },
+                  ],
+                }),
+            });
+          }
+          if (urlStr.includes('/api/v3/ticker/price')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ price: '50000' }) });
+          }
+          return Promise.reject(new Error(`unexpected URL ${urlStr}`));
+        }),
+      );
+
+      const res = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      // 0.5 BTC * $50000 + 100 USDT * $1 = $25100 = 2,510,000 cents
+      expect(res.body.data.totalValueUsd).toBe(2_510_000);
+    });
+
+    it('syncs a Bybit wallet once its API keys are configured', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ bybitApiKey: 'key', bybitApiSecret: 'secret' });
+
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Bybit', platform: 'bybit', address: 'main', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                retCode: 0,
+                retMsg: 'OK',
+                result: {
+                  list: [
+                    {
+                      coin: [
+                        { coin: 'ETH', walletBalance: '2', usdValue: '6000' },
+                        { coin: 'USDC', walletBalance: '50', usdValue: '50' },
+                      ],
+                    },
+                  ],
+                },
+              }),
+          }),
+        ),
+      );
+
+      const res = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.totalValueUsd).toBe(605_000);
+    });
   });
 });

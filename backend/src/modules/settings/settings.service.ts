@@ -7,6 +7,8 @@ import { getAccountSummary } from '../../integrations/cryptocom/cryptocom.client
 import { search as searchPokemonPriceTracker } from '../../integrations/collectibles/pokemonpricetracker.provider.js';
 import { search as searchPoketrace } from '../../integrations/collectibles/poketrace.provider.js';
 import { getQuote } from '../../integrations/alphavantage/alphavantage.client.js';
+import { getAccountBalances } from '../../integrations/binance/binance.client.js';
+import { getWalletBalanceUsd } from '../../integrations/bybit/bybit.client.js';
 import { SETTINGS_FIELDS, type SettingsField } from './settings.constants.js';
 import type { TestSettingInput, UpdateSettingsInput } from './settings.schema.js';
 
@@ -45,6 +47,8 @@ export class SettingsService {
       poketraceConfigured: has('poketraceApiKey'),
       revolutConfigured: has('revolutClientId') && has('revolutClientSecret'),
       alphaVantageConfigured: has('alphaVantageApiKey'),
+      binanceConfigured: has('binanceApiKey') && has('binanceApiSecret'),
+      bybitConfigured: has('bybitApiKey') && has('bybitApiSecret'),
     };
   }
 
@@ -119,6 +123,20 @@ export class SettingsService {
           return {
             success: true,
             message: `Clé Alpha Vantage valide (${ALPHA_VANTAGE_TEST_SYMBOL} : ${quote.price}).`,
+          };
+        }
+        case 'binance': {
+          const balances = await getAccountBalances(input.binanceApiKey, input.binanceApiSecret);
+          return {
+            success: true,
+            message: `Connexion Binance réussie (${balances.length} actif${balances.length > 1 ? 's' : ''}).`,
+          };
+        }
+        case 'bybit': {
+          const balances = await getWalletBalanceUsd(input.bybitApiKey, input.bybitApiSecret);
+          return {
+            success: true,
+            message: `Connexion Bybit réussie (${balances.length} actif${balances.length > 1 ? 's' : ''}).`,
           };
         }
       }

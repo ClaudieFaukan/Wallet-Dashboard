@@ -109,7 +109,11 @@ type FieldName =
   | 'poketraceApiKey'
   | 'revolutClientId'
   | 'revolutClientSecret'
-  | 'alphaVantageApiKey';
+  | 'alphaVantageApiKey'
+  | 'binanceApiKey'
+  | 'binanceApiSecret'
+  | 'bybitApiKey'
+  | 'bybitApiSecret';
 
 interface IntegrationGroupProps {
   title: string;
@@ -285,6 +289,32 @@ function IntegrationsSection() {
           onTest={(v) => handleTest('alphaVantage', v)}
           testing={testSetting.isPending}
           testResult={testResults.alphaVantage}
+        />
+        <IntegrationGroup
+          title="Binance"
+          configured={Boolean(status?.binanceConfigured)}
+          fields={[
+            { name: 'binanceApiKey', label: 'Clé API' },
+            { name: 'binanceApiSecret', label: 'Secret' },
+          ]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('binance', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.binance}
+        />
+        <IntegrationGroup
+          title="Bybit"
+          configured={Boolean(status?.bybitConfigured)}
+          fields={[
+            { name: 'bybitApiKey', label: 'Clé API' },
+            { name: 'bybitApiSecret', label: 'Secret' },
+          ]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('bybit', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.bybit}
         />
       </div>
     </Card>
