@@ -13,6 +13,7 @@ import { creditsRouter } from './modules/credits/credits.routes.js';
 import { cryptoRouter } from './modules/crypto/crypto.routes.js';
 import { exchangeRatesRouter } from './modules/exchange-rates/exchange-rates.routes.js';
 import { investmentsRouter } from './modules/investments/investments.routes.js';
+import { realEstateRouter } from './modules/real-estate/real-estate.routes.js';
 import { savingsRouter } from './modules/savings/savings.routes.js';
 import { settingsRouter } from './modules/settings/settings.routes.js';
 import { transactionsRouter } from './modules/transactions/transactions.routes.js';
@@ -42,6 +43,7 @@ export function createApp() {
   app.use('/api/v1/crypto', cryptoRouter);
   app.use('/api/v1/exchange-rates', exchangeRatesRouter);
   app.use('/api/v1/investments', investmentsRouter);
+  app.use('/api/v1/real-estate', realEstateRouter);
   app.use('/api/v1/savings', savingsRouter);
   app.use('/api/v1/settings', settingsRouter);
   app.use('/api/v1/transactions', transactionsRouter);

@@ -37,6 +37,10 @@ import type {
   ManualPriceUpdateInput,
   ProjectionQuery,
   ProjectionResult,
+  RealEstateAsset,
+  RecordRealEstateValueInput,
+  RecordRealEstateValueResult,
+  RealEstateValuePoint,
   SavingsDeposit,
   SavingsGoal,
   SavingsMilestonesView,
@@ -57,6 +61,8 @@ import type {
   UpdateWalletInput,
   RecordCreditPaymentInput,
   UpdateCollectibleInput,
+  UpdateRealEstateAssetInput,
+  CreateRealEstateAssetInput,
   WalletTokensResponse,
 } from '../types/api';
 
@@ -321,5 +327,21 @@ export const api = {
           params: { earlyRepaymentDate },
         }),
       ),
+  },
+
+  realEstate: {
+    list: () => unwrap(client.get<ApiResponse<RealEstateAsset[]>>('/real-estate')),
+    getById: (id: string) => unwrap(client.get<ApiResponse<RealEstateAsset>>(`/real-estate/${id}`)),
+    create: (input: CreateRealEstateAssetInput) =>
+      unwrap(client.post<ApiResponse<RealEstateAsset>>('/real-estate', input)),
+    update: (id: string, input: UpdateRealEstateAssetInput) =>
+      unwrap(client.patch<ApiResponse<RealEstateAsset>>(`/real-estate/${id}`, input)),
+    delete: (id: string) => client.delete(`/real-estate/${id}`),
+    recordValue: (id: string, input: RecordRealEstateValueInput) =>
+      unwrap(
+        client.post<ApiResponse<RecordRealEstateValueResult>>(`/real-estate/${id}/value`, input),
+      ),
+    history: (id: string) =>
+      unwrap(client.get<ApiResponse<RealEstateValuePoint[]>>(`/real-estate/${id}/history`)),
   },
 };

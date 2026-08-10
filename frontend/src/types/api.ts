@@ -329,6 +329,59 @@ export interface CreditSimulation {
   points: CreditSimulationPoint[];
 }
 
+export type RealEstateType = 'physical' | 'scpi' | 'crowdfunding';
+
+export interface RealEstateAsset {
+  id: string;
+  userId: string;
+  name: string;
+  type: RealEstateType;
+  platform: string | null;
+  purchasePrice: number;
+  currentValue: number;
+  purchaseDate: string;
+  monthlyIncome: number;
+  surfaceM2: number | null;
+  location: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRealEstateAssetInput {
+  name: string;
+  type: RealEstateType;
+  platform?: string;
+  purchasePrice: number;
+  currentValue: number;
+  purchaseDate: string;
+  monthlyIncome?: number;
+  surfaceM2?: number;
+  location?: string;
+  notes?: string;
+}
+
+export type UpdateRealEstateAssetInput = Partial<CreateRealEstateAssetInput>;
+
+export interface RealEstateValuePoint {
+  id: string;
+  assetId: string;
+  date: string;
+  value: number;
+  notes: string | null;
+}
+
+export interface RecordRealEstateValueInput {
+  date: string;
+  value: number;
+  notes?: string;
+}
+
+export interface RecordRealEstateValueResult {
+  point: RealEstateValuePoint;
+  asset: RealEstateAsset;
+}
+
 export interface ProjectionPoint {
   month: number;
   date: string;

@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight,
   Bitcoin,
+  Building2,
   LayoutDashboard,
   Landmark,
   LogOut,
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/crypto', label: 'Crypto', icon: Bitcoin },
   { to: '/collectibles', label: 'Collectibles', icon: Sparkles },
   { to: '/credits', label: 'Crédits', icon: Landmark },
+  { to: '/real-estate', label: 'Immobilier', icon: Building2 },
 ];
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>

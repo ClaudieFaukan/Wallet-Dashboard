@@ -10,3 +10,4 @@ export * from './settings.js';
 export * from './exchange-rates.js';
 export * from './credits.js';
 export * from './stock-quotes.js';
+export * from './real-estate.js';
