@@ -13,6 +13,7 @@ import type {
   CollectiblesConfig,
   CollectibleWithHistory,
   CollectibleItem,
+  CollectibleItemType,
   CreateAccountInput,
   CreateCategoryInput,
   CreateCollectibleInput,
@@ -270,7 +271,7 @@ export const api = {
   },
 
   collectibles: {
-    list: (type?: 'card' | 'sealed') =>
+    list: (type?: CollectibleItemType) =>
       unwrap(client.get<ApiResponse<CollectibleItem[]>>('/collectibles', { params: { type } })),
     getById: (id: string) =>
       unwrap(client.get<ApiResponse<CollectibleWithHistory>>(`/collectibles/${id}`)),
@@ -284,7 +285,9 @@ export const api = {
         client.put<ApiResponse<unknown>>(`/collectibles/${id}/price`, input),
       ),
     syncPrices: () => unwrap(client.post<ApiResponse<SyncPricesResult>>('/collectibles/sync-prices')),
-    performance: (query: { sort?: 'best_performers' | 'worst_performers'; type?: 'card' | 'sealed' } = {}) =>
+    performance: (
+      query: { sort?: 'best_performers' | 'worst_performers'; type?: CollectibleItemType } = {},
+    ) =>
       unwrap(client.get<ApiResponse<CollectiblePerformance>>('/collectibles/performance', { params: query })),
     searchCard: (q: string, tcgType: TcgType = 'pokemon') =>
       unwrap(

@@ -44,6 +44,11 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
   const [condition, setCondition] = useState<CollectibleCondition>(item.condition ?? 'NM');
   const [sealedType, setSealedType] = useState<CollectibleSealedType>(item.sealedType ?? 'booster_box');
   const [sealedLanguage, setSealedLanguage] = useState<CollectibleSealedLanguage>(item.sealedLanguage ?? 'FR');
+  const [brand, setBrand] = useState(item.brand ?? '');
+  const [model, setModel] = useState(item.model ?? '');
+  const [reference, setReference] = useState(item.reference ?? '');
+  const [year, setYear] = useState(item.year?.toString() ?? '');
+  const [watchCondition, setWatchCondition] = useState(item.watchCondition ?? '');
   const [purchasePrice, setPurchasePrice] = useState((item.purchasePrice / 100).toString());
   const [purchaseDate, setPurchaseDate] = useState(item.purchaseDate.slice(0, 10));
   const [notes, setNotes] = useState(item.notes ?? '');
@@ -64,6 +69,11 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
           condition: item.itemType === 'card' ? condition : undefined,
           sealedType: item.itemType === 'sealed' ? sealedType : undefined,
           sealedLanguage: item.itemType === 'sealed' ? sealedLanguage : undefined,
+          brand: item.itemType === 'watch' ? brand || undefined : undefined,
+          model: item.itemType === 'watch' ? model || undefined : undefined,
+          reference: item.itemType === 'watch' ? reference || undefined : undefined,
+          year: item.itemType === 'watch' && year ? Number(year) : undefined,
+          watchCondition: item.itemType === 'watch' ? watchCondition || undefined : undefined,
           purchasePrice: Math.round(Number(purchasePrice) * 100),
           purchaseDate: new Date(purchaseDate).toISOString(),
           notes: notes || undefined,
@@ -83,7 +93,7 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
 
-        {item.itemType === 'card' ? (
+        {item.itemType === 'card' && (
           <>
             <Input label="Set" value={setName_} onChange={(e) => setSetName(e.target.value)} />
             <Input label="Numéro de carte" value={cardNumber} onChange={(e) => setCardNumber(e.target.value)} />
@@ -99,7 +109,8 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
               <option value="DMG">Damaged (DMG)</option>
             </Select>
           </>
-        ) : (
+        )}
+        {item.itemType === 'sealed' && (
           <>
             <Select
               label="Type"
@@ -121,6 +132,15 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
               <option value="EN">Anglais</option>
               <option value="JP">Japonais</option>
             </Select>
+          </>
+        )}
+        {item.itemType === 'watch' && (
+          <>
+            <Input label="Marque" value={brand} onChange={(e) => setBrand(e.target.value)} />
+            <Input label="Modèle" value={model} onChange={(e) => setModel(e.target.value)} />
+            <Input label="Référence" value={reference} onChange={(e) => setReference(e.target.value)} />
+            <Input label="Année" type="number" value={year} onChange={(e) => setYear(e.target.value)} />
+            <Input label="État" value={watchCondition} onChange={(e) => setWatchCondition(e.target.value)} />
           </>
         )}
 

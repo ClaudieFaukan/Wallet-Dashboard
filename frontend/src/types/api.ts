@@ -458,7 +458,7 @@ export interface WalletTokensResponse {
   note: string | null;
 }
 
-export type CollectibleItemType = 'card' | 'sealed';
+export type CollectibleItemType = 'card' | 'sealed' | 'watch';
 export type CollectibleCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG';
 export type CollectibleSealedType = 'booster_box' | 'etb' | 'blister' | 'collection' | 'display';
 export type CollectibleSealedLanguage = 'FR' | 'EN' | 'JP';
@@ -484,6 +484,11 @@ export interface CollectibleItem {
   tcgType: TcgType;
   sealedType: CollectibleSealedType | null;
   sealedLanguage: CollectibleSealedLanguage | null;
+  brand: string | null;
+  model: string | null;
+  reference: string | null;
+  year: number | null;
+  watchCondition: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -514,6 +519,21 @@ export type CreateCollectibleInput =
       sealedType?: CollectibleSealedType;
       sealedLanguage?: CollectibleSealedLanguage;
       priceSource?: 'manual' | 'pokemonpricetracker' | 'poketrace';
+    }
+  | {
+      itemType: 'watch';
+      name: string;
+      setName?: string;
+      imageUrl?: string;
+      notes?: string;
+      purchasePrice: number;
+      purchaseDate: string;
+      brand?: string;
+      model?: string;
+      reference?: string;
+      year?: number;
+      watchCondition?: string;
+      priceSource?: 'manual';
     };
 
 export type CollectiblePriceSnapshotSource =
@@ -552,6 +572,11 @@ export interface UpdateCollectibleInput {
   tcgType?: TcgType;
   sealedType?: CollectibleSealedType;
   sealedLanguage?: CollectibleSealedLanguage;
+  brand?: string;
+  model?: string;
+  reference?: string;
+  year?: number;
+  watchCondition?: string;
 }
 
 export interface ManualPriceUpdateInput {
