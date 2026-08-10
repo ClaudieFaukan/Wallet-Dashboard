@@ -23,12 +23,18 @@ export function YearlyHeatmap({ year }: { year: number }) {
     return row ? Math.abs(Math.min(row.total, 0)) : 0;
   };
 
-  const maxSpend = Math.max(
-    1,
-    ...Array.from(categoryNames.keys()).flatMap((id) =>
-      MONTH_LABELS.map((_, i) => spend(id, i)),
-    ),
+  const categoryTotal = (categoryId: string) =>
+    MONTH_LABELS.reduce((sum, _, i) => sum + spend(categoryId, i), 0);
+
+  const sortedCategoryIds = Array.from(categoryNames.keys()).sort(
+    (a, b) => categoryTotal(b) - categoryTotal(a),
   );
+
+  const monthTotal = (monthIndex: number) =>
+    sortedCategoryIds.reduce((sum, id) => sum + spend(id, monthIndex), 0);
+  const grandTotal = sortedCategoryIds.reduce((sum, id) => sum + categoryTotal(id), 0);
+
+  const maxSpend = Math.max(1, ...sortedCategoryIds.flatMap((id) => MONTH_LABELS.map((_, i) => spend(id, i))));
 
   return (
     <Card>
@@ -42,12 +48,13 @@ export function YearlyHeatmap({ year }: { year: number }) {
                   {m}
                 </th>
               ))}
+              <th className="p-1 text-right font-medium text-text-muted">Total</th>
             </tr>
           </thead>
           <tbody>
-            {Array.from(categoryNames.entries()).map(([id, name]) => (
-              <tr key={id}>
-                <td className="p-1 text-text-primary">{name}</td>
+            {sortedCategoryIds.map((id) => (
+              <tr key={id} className="hover:bg-bg-elevated">
+                <td className="p-1 text-text-primary">{categoryNames.get(id)}</td>
                 {MONTH_LABELS.map((_, i) => {
                   const value = spend(id, i);
                   const intensity = value / maxSpend;
@@ -63,13 +70,27 @@ export function YearlyHeatmap({ year }: { year: number }) {
                     </td>
                   );
                 })}
+                <td className="p-1 text-right font-mono font-medium text-text-primary">
+                  {formatCents(categoryTotal(id))}
+                </td>
               </tr>
             ))}
-            {categoryNames.size === 0 && (
+            {sortedCategoryIds.length === 0 && (
               <tr>
-                <td colSpan={13} className="py-4 text-center text-text-muted">
+                <td colSpan={14} className="py-4 text-center text-text-muted">
                   Aucune dépense cette année.
                 </td>
+              </tr>
+            )}
+            {sortedCategoryIds.length > 0 && (
+              <tr className="border-t border-border font-semibold text-text-primary">
+                <td className="p-1">Total</td>
+                {MONTH_LABELS.map((_, i) => (
+                  <td key={i} className="p-1 text-center font-mono">
+                    {formatCents(monthTotal(i)).replace(',00', '')}
+                  </td>
+                ))}
+                <td className="p-1 text-right font-mono">{formatCents(grandTotal)}</td>
               </tr>
             )}
           </tbody>

@@ -31,7 +31,7 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
         <Pencil size={14} />
       </button>
       <div className="flex items-center gap-4">
-        <CircularProgress value={pct} label={goal.name} />
+        <CircularProgress value={pct} label={goal.name} color={goal.color ?? undefined} />
         <div className="flex-1">
           <p className="text-sm font-semibold text-text-primary">{goal.name}</p>
           <p className="font-mono text-sm text-text-muted">

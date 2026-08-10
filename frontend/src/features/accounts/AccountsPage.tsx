@@ -4,19 +4,31 @@ import { Header } from '../../components/layout/Header';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { Variation } from '../../components/ui/Variation';
 import { DonutChartCard } from '../../components/charts/DonutChartCard';
+import { otherColor } from '../../components/charts/chartTheme';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
-import { AccountRow } from './components/AccountRow';
+import { usePatrimoineRows } from '../../hooks/usePatrimoineRows';
+import { AssetTable } from './components/AssetTable';
 import { CreateAccountDrawer } from './components/CreateAccountDrawer';
-import { useAccounts } from './hooks/useAccounts';
+
+const DONUT_TOP_N = 8;
 
 export function AccountsPage() {
-  const { data: accounts, isLoading } = useAccounts();
+  const { rows, assetsTotal, assetsYtdVariation, assetsYtdVariationPct, isLoading } = usePatrimoineRows();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { formatCents } = useFormatCurrency();
 
-  const total = (accounts ?? []).reduce((sum, a) => sum + a.balance, 0);
-  const donutData = (accounts ?? []).map((a) => ({ label: a.name, value: a.balance }));
+  const assetRows = [...rows]
+    .filter((r) => !r.isLiability && r.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const top = assetRows.slice(0, DONUT_TOP_N);
+  const rest = assetRows.slice(DONUT_TOP_N);
+  const restTotal = rest.reduce((sum, r) => sum + r.value, 0);
+  const donutData = [
+    ...top.map((r) => ({ label: r.name, value: r.value })),
+    ...(restTotal > 0 ? [{ label: 'Autre', value: restTotal, color: otherColor }] : []),
+  ];
 
   return (
     <div>
@@ -36,40 +48,29 @@ export function AccountsPage() {
           </div>
         )}
 
-        {!isLoading && accounts && accounts.length > 0 && (
+        {!isLoading && rows.length === 0 && (
+          <p className="text-sm text-text-muted">Aucun actif pour l'instant.</p>
+        )}
+
+        {!isLoading && rows.length > 0 && (
           <div className="grid grid-cols-3 gap-4">
             <Card className="col-span-2 flex flex-col justify-center">
-              <p className="text-sm text-text-secondary">Patrimoine total</p>
+              <p className="text-sm text-text-secondary">Patrimoine brut</p>
               <p className="mt-2 font-mono text-hero font-bold tracking-[-0.03em] text-text-primary">
-                {formatCents(total)}
+                {formatCents(assetsTotal)}
               </p>
+              {assetsYtdVariation !== null && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Variation amountCents={assetsYtdVariation} percent={assetsYtdVariationPct} />
+                  <span className="text-xs text-text-muted">Variation année à date</span>
+                </div>
+              )}
             </Card>
-            <DonutChartCard title="Répartition par compte" data={donutData} formatValue={(v) => formatCents(v)} />
+            <DonutChartCard title="Répartition" data={donutData} formatValue={(v) => formatCents(v)} />
           </div>
         )}
 
-        {!isLoading && accounts?.length === 0 && (
-          <p className="text-sm text-text-muted">Aucun compte pour l'instant.</p>
-        )}
-
-        {!isLoading && accounts && accounts.length > 0 && (
-          <Card className="p-4">
-            <div className="flex items-center gap-4 border-b border-border px-2 pb-3 text-xs font-medium text-text-muted">
-              <div className="flex-1">Nom</div>
-              <div className="w-44 shrink-0">Type</div>
-              <div className="w-24 shrink-0">Répartition</div>
-              <div className="w-28 shrink-0 text-right">Valeur</div>
-              <div className="w-[92px] shrink-0" />
-            </div>
-            {accounts.map((account) => (
-              <AccountRow
-                key={account.id}
-                account={account}
-                sharePercent={total > 0 ? (account.balance / total) * 100 : 0}
-              />
-            ))}
-          </Card>
-        )}
+        {!isLoading && rows.length > 0 && <AssetTable rows={rows} isLoading={isLoading} />}
       </div>
       <CreateAccountDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>

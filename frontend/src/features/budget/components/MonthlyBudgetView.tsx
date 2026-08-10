@@ -4,6 +4,7 @@ import { Card } from '../../../components/ui/Card';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { ProgressBar } from '../../../components/charts/ProgressBar';
+import { DonutChartCard } from '../../../components/charts/DonutChartCard';
 import { chartColors } from '../../../components/charts/chartTheme';
 import { formatMonth } from '../../../lib/format';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
@@ -39,10 +40,13 @@ export function MonthlyBudgetView({ budget, categories }: MonthlyBudgetViewProps
   const [bulkAdding, setBulkAdding] = useState(false);
   const addLine = useAddBudgetLine();
   const { formatCents } = useFormatCurrency();
+  const categoriesById = new Map(categories.map((c) => [c.id, c]));
 
   const usedCategoryIds = new Set(budget.lines.map((l) => l.categoryId));
   const availableCategories = categories.filter((c) => !usedCategoryIds.has(c.id));
   const availableExpenseCategories = availableCategories.filter((c) => c.type === 'expense');
+  const sortedLines = [...budget.lines].sort((a, b) => b.actualAmount - a.actualAmount);
+  const remaining = budget.totalPlanned - budget.totalActual;
 
   async function handleBulkAdd() {
     setBulkAdding(true);
@@ -55,87 +59,134 @@ export function MonthlyBudgetView({ budget, categories }: MonthlyBudgetViewProps
     }
   }
 
-  return (
-    <Card>
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-medium text-text-muted">
-          Prévu {formatCents(budget.totalPlanned)} · Réel {formatCents(budget.totalActual)}
-        </h3>
-      </div>
+  const donutData = budget.lines
+    .filter((l) => l.actualAmount > 0)
+    .map((l) => ({
+      label: l.categoryName,
+      value: l.actualAmount,
+      color: categoriesById.get(l.categoryId)?.color ?? undefined,
+    }));
 
-      {budget.lines.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-10 text-center">
-          <PiggyBank size={32} className="text-text-muted" />
-          <div>
-            <p className="text-sm font-medium text-text-primary">
-              Aucun budget pour {formatMonth(budget.month)}
-            </p>
-            <p className="mt-1 text-sm text-text-muted">
-              Commencez par ajouter vos catégories de dépenses.
-            </p>
+  return (
+    <div className="space-y-4">
+      {budget.lines.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="col-span-2">
+            <div className="grid grid-cols-3 divide-x divide-border">
+              <div className="pr-4">
+                <p className="text-sm text-text-secondary">Prévu</p>
+                <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
+                  {formatCents(budget.totalPlanned)}
+                </p>
+              </div>
+              <div className="px-4">
+                <p className="text-sm text-text-secondary">Réel</p>
+                <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
+                  {formatCents(budget.totalActual)}
+                </p>
+              </div>
+              <div className="pl-4">
+                <p className="text-sm text-text-secondary">{remaining >= 0 ? 'Reste' : 'Dépassement'}</p>
+                <p
+                  className={`mt-1 font-mono text-lg font-semibold ${remaining >= 0 ? 'text-accent-2' : 'text-accent-3'}`}
+                >
+                  {formatCents(Math.abs(remaining))}
+                </p>
+              </div>
+            </div>
+          </Card>
+          <DonutChartCard title="Répartition des dépenses" data={donutData} formatValue={(v) => formatCents(v)} />
+        </div>
+      )}
+
+      <Card>
+        {budget.lines.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-10 text-center">
+            <PiggyBank size={32} className="text-text-muted" />
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                Aucun budget pour {formatMonth(budget.month)}
+              </p>
+              <p className="mt-1 text-sm text-text-muted">
+                Commencez par ajouter vos catégories de dépenses.
+              </p>
+            </div>
+            {availableExpenseCategories.length > 0 && (
+              <Button
+                size="sm"
+                icon={<Plus size={14} />}
+                onClick={handleBulkAdd}
+                disabled={bulkAdding}
+              >
+                {bulkAdding
+                  ? 'Création…'
+                  : `Créer le budget de ${formatMonth(budget.month)}`}
+              </Button>
+            )}
           </div>
-          {availableExpenseCategories.length > 0 && (
+        ) : (
+          <div className="space-y-4">
+            {sortedLines.map((line) => {
+              const over = line.actualAmount > line.plannedAmount;
+              const lineRemaining = line.plannedAmount - line.actualAmount;
+              return (
+                <div key={line.id} className="flex items-center gap-4">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: categoriesById.get(line.categoryId)?.color ?? chartColors.textMuted }}
+                  />
+                  <span className="w-32 shrink-0 truncate text-sm text-text-primary">{line.categoryName}</span>
+                  <div className="flex-1">
+                    <ProgressBar
+                      value={line.actualAmount}
+                      max={Math.max(line.plannedAmount, 1)}
+                      color={over ? chartColors.accent3 : chartColors.accent}
+                    />
+                  </div>
+                  <span className="w-20 shrink-0 text-right font-mono text-xs text-text-muted">
+                    {formatCents(line.actualAmount)}
+                  </span>
+                  <span
+                    className={`w-28 shrink-0 text-right text-xs ${over ? 'text-accent-3' : 'text-text-muted'}`}
+                  >
+                    {over ? `Dépassé de ${formatCents(-lineRemaining)}` : `Reste ${formatCents(lineRemaining)}`}
+                  </span>
+                  <PlannedAmountInput lineId={line.id} plannedAmount={line.plannedAmount} />
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {availableCategories.length > 0 && (
+          <div className="mt-5 flex items-end gap-2 border-t border-border pt-4">
+            <Select
+              label="Ajouter une catégorie"
+              value={newCategoryId}
+              onChange={(e) => setNewCategoryId(e.target.value)}
+              className="w-48"
+            >
+              <option value="">Choisir…</option>
+              {availableCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
             <Button
               size="sm"
-              icon={<Plus size={14} />}
-              onClick={handleBulkAdd}
-              disabled={bulkAdding}
+              variant="secondary"
+              disabled={!newCategoryId || addLine.isPending}
+              onClick={() => {
+                addLine.mutate({ categoryId: newCategoryId, plannedAmount: 0 });
+                setNewCategoryId('');
+              }}
             >
-              {bulkAdding
-                ? 'Création…'
-                : `Créer le budget de ${formatMonth(budget.month)}`}
+              Ajouter
             </Button>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {budget.lines.map((line) => (
-            <div key={line.id} className="flex items-center gap-4">
-              <span className="w-32 shrink-0 text-sm text-text-primary">{line.categoryName}</span>
-              <div className="flex-1">
-                <ProgressBar
-                  value={line.actualAmount}
-                  max={Math.max(line.plannedAmount, 1)}
-                  color={line.actualAmount > line.plannedAmount ? chartColors.accent3 : chartColors.accent}
-                />
-              </div>
-              <span className="w-20 shrink-0 text-right font-mono text-xs text-text-muted">
-                {formatCents(line.actualAmount)}
-              </span>
-              <PlannedAmountInput lineId={line.id} plannedAmount={line.plannedAmount} />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {availableCategories.length > 0 && (
-        <div className="mt-5 flex items-end gap-2 border-t border-border pt-4">
-          <Select
-            label="Ajouter une catégorie"
-            value={newCategoryId}
-            onChange={(e) => setNewCategoryId(e.target.value)}
-            className="w-48"
-          >
-            <option value="">Choisir…</option>
-            {availableCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!newCategoryId || addLine.isPending}
-            onClick={() => {
-              addLine.mutate({ categoryId: newCategoryId, plannedAmount: 0 });
-              setNewCategoryId('');
-            }}
-          >
-            Ajouter
-          </Button>
-        </div>
-      )}
-    </Card>
+          </div>
+        )}
+      </Card>
+    </div>
   );
 }

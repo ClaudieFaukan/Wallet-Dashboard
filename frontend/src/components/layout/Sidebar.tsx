@@ -30,10 +30,10 @@ const navItems = [
 ];
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>
-  `flex items-center gap-3 rounded-r-lg py-2 pl-[10px] pr-3 -ml-px border-l-2 text-sm font-medium transition-colors ${
+  `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
     isActive
-      ? 'border-accent-gold bg-bg-elevated text-text-primary'
-      : 'border-transparent text-text-muted hover:bg-bg-surface hover:text-text-secondary'
+      ? 'bg-bg-elevated text-text-primary font-semibold'
+      : 'text-text-muted hover:bg-bg-surface hover:text-text-secondary'
   }`;
 
 export function Sidebar() {

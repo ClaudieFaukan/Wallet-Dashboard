@@ -57,7 +57,7 @@ export function CreditCard({ credit }: { credit: Credit }) {
         </div>
         <div>
           <p className="text-xs text-text-muted">Capital restant</p>
-          <p className="font-mono text-text-primary">{formatCents(credit.remainingAmount)}</p>
+          <p className="font-mono text-accent-3">{formatCents(credit.remainingAmount)}</p>
         </div>
         <div>
           <p className="text-xs text-text-muted">Taux</p>

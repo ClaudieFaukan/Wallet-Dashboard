@@ -42,7 +42,11 @@ export function AccountDetailPage() {
 
         <Card>
           <h3 className="mb-3 text-sm font-medium text-text-muted">Transactions</h3>
-          <TransactionsTable transactions={transactions?.data ?? []} categories={categories ?? []} />
+          <TransactionsTable
+            transactions={transactions?.data ?? []}
+            categories={categories ?? []}
+            accountsById={account ? new Map([[account.id, account]]) : new Map()}
+          />
         </Card>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { pieColors, tooltipStyle } from './chartTheme';
 
 interface DonutChartCardProps {
   title?: string;
-  data: { label: string; value: number }[];
+  data: { label: string; value: number; color?: string }[];
   formatValue?: (value: number) => string;
   centerLabel?: string;
   height?: number;
@@ -19,6 +19,7 @@ export function DonutChartCard({
 }: DonutChartCardProps) {
   const nonZero = data.filter((d) => d.value > 0);
   const total = nonZero.reduce((sum, d) => sum + d.value, 0);
+  const colorFor = (entry: { color?: string }, i: number) => entry.color ?? pieColors[i % pieColors.length]!;
 
   return (
     <Card>
@@ -42,7 +43,7 @@ export function DonutChartCard({
                   stroke="none"
                 >
                   {nonZero.map((entry, i) => (
-                    <Cell key={entry.label} fill={pieColors[i % pieColors.length]} />
+                    <Cell key={entry.label} fill={colorFor(entry, i)} />
                   ))}
                 </Pie>
                 <Tooltip {...tooltipStyle} formatter={(value) => formatValue(Number(value))} />
@@ -61,7 +62,7 @@ export function DonutChartCard({
                 <span className="flex min-w-0 items-center gap-2 text-text-primary">
                   <span
                     className="h-1 w-8 shrink-0 rounded-full"
-                    style={{ backgroundColor: pieColors[i % pieColors.length] }}
+                    style={{ backgroundColor: colorFor(entry, i) }}
                   />
                   <span className="truncate">{entry.label}</span>
                 </span>

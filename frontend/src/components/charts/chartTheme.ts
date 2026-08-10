@@ -25,6 +25,24 @@ export const pieColors = [
   '#84cc16',
 ];
 
+/** Muted neutral used for the "Autre" catch-all slice grouping small items
+ * beyond the top N in a donut, so it never competes visually with real data. */
+export const otherColor = '#3a3a4a';
+
+export type AssetKind = 'account' | 'investment' | 'crypto' | 'real_estate' | 'collectibles' | 'credit';
+
+/** Stable color per asset category, used for type badges/icons so the same
+ * kind of asset always reads the same hue across pages (donut slices stay
+ * per-item/positional — see DonutChartCard — this is for smaller accents). */
+export const assetKindColors: Record<AssetKind, string> = {
+  account: chartColors.accent,
+  investment: '#14b8a6',
+  crypto: '#a855f7',
+  real_estate: '#f59e0b',
+  collectibles: '#ec4899',
+  credit: chartColors.accent3,
+};
+
 export const tooltipStyle = {
   contentStyle: {
     backgroundColor: chartColors.elevated,

@@ -10,9 +10,12 @@ import { AreaChartCard } from '../../components/charts/AreaChartCard';
 import { DonutChartCard } from '../../components/charts/DonutChartCard';
 import { useNetWorth } from '../../hooks/useNetWorth';
 import { bucketMonthly, useNetWorthHistory } from '../../hooks/useNetWorthHistory';
+import { usePatrimoineRows } from '../../hooks/usePatrimoineRows';
 import { formatDate, formatMonth } from '../../lib/format';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { useDashboardData } from './hooks/useDashboardData';
+import { PerformanceCard } from './components/PerformanceCard';
+import { TopMoversCarousel } from './components/TopMoversCarousel';
 
 type PeriodKey = '7J' | '1M' | '3M' | '6M' | 'YTD' | '1A' | 'TOUT';
 
@@ -25,6 +28,16 @@ const periodTabs: { value: PeriodKey; label: string }[] = [
   { value: '1A', label: '1A' },
   { value: 'TOUT', label: 'TOUT' },
 ];
+
+const periodPerformanceLabels: Record<PeriodKey, string> = {
+  '7J': '7 derniers jours',
+  '1M': '30 derniers jours',
+  '3M': '3 derniers mois',
+  '6M': '6 derniers mois',
+  YTD: 'Année en cours',
+  '1A': '12 derniers mois',
+  TOUT: 'Historique complet',
+};
 
 export function DashboardPage() {
   const [period, setPeriod] = useState<PeriodKey>('1A');
@@ -44,6 +57,7 @@ export function DashboardPage() {
   };
   const days = periodDays[period];
   const history = useNetWorthHistory(days);
+  const patrimoine = usePatrimoineRows();
   const {
     accountsTotal,
     savingsTotal,
@@ -90,27 +104,37 @@ export function DashboardPage() {
           </div>
         )}
 
-        <AreaChartCard
-          header={
-            <>
-              {lastDay && <p className="text-sm text-text-secondary">{formatDate(lastDay)}</p>}
-              <p className="mt-1 font-mono text-hero font-bold tracking-[-0.03em] text-text-primary">
-                {netWorth.isLoading ? '—' : formatCents(netWorth.total)}
-              </p>
-              {!history.isLoading && (
-                <div className="mt-2">
-                  <Variation amountCents={delta} percent={deltaPercent} />
-                </div>
-              )}
-            </>
-          }
-          actions={<Tabs tabs={periodTabs} value={period} onChange={setPeriod} />}
-          data={chartData}
-          formatValue={(v) => formatCents(v)}
-          height={280}
-        />
+        <div className="grid grid-cols-3 gap-4">
+          <AreaChartCard
+            className="col-span-2"
+            header={
+              <>
+                {lastDay && <p className="text-sm text-text-secondary">{formatDate(lastDay)}</p>}
+                <p className="mt-1 font-mono text-hero font-bold tracking-[-0.03em] text-text-primary">
+                  {netWorth.isLoading ? '—' : formatCents(netWorth.total)}
+                </p>
+                {!history.isLoading && (
+                  <div className="mt-2">
+                    <Variation amountCents={delta} percent={deltaPercent} />
+                  </div>
+                )}
+              </>
+            }
+            actions={<Tabs tabs={periodTabs} value={period} onChange={setPeriod} />}
+            data={chartData}
+            formatValue={(v) => formatCents(v)}
+            height={280}
+          />
+          <PerformanceCard
+            amountCents={!history.isLoading && first !== 0 ? delta : null}
+            percent={!history.isLoading && first !== 0 ? deltaPercent : null}
+            periodLabel={periodPerformanceLabels[period]}
+          />
+        </div>
 
-        <div className="grid grid-cols-4 gap-4">
+        <TopMoversCarousel rows={patrimoine.rows} isLoading={patrimoine.isLoading} />
+
+        <div className="grid grid-cols-5 gap-4">
           <Card>
             <p className="text-sm text-text-secondary">Solde comptes</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
@@ -133,6 +157,12 @@ export function DashboardPage() {
             <p className="text-sm text-text-secondary">Crypto</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
               {formatCents(netWorth.breakdown.crypto)}
+            </p>
+          </Card>
+          <Card>
+            <p className="text-sm text-text-secondary">Immobilier</p>
+            <p className="mt-1 font-mono text-lg font-semibold text-text-primary">
+              {formatCents(netWorth.breakdown.realEstate)}
             </p>
           </Card>
         </div>

@@ -4,6 +4,7 @@ import { Pencil, RefreshCw } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Variation } from '../../../components/ui/Variation';
 import { useToast } from '../../../components/ui/Toast';
 import { LineChartCard } from '../../../components/charts/LineChartCard';
 import { getErrorMessage } from '../../../lib/api';
@@ -24,7 +25,7 @@ const platformLabels: Record<CryptoWallet['platform'], string> = {
   kraken: 'Kraken',
 };
 
-export function WalletCard({ wallet }: { wallet: CryptoWallet }) {
+export function WalletCard({ wallet, ytdVariationPct }: { wallet: CryptoWallet; ytdVariationPct: number | null }) {
   const { data: history } = useCryptoHistory(wallet.id);
   const sync = useSyncWallet();
   const toast = useToast();
@@ -63,6 +64,11 @@ export function WalletCard({ wallet }: { wallet: CryptoWallet }) {
           <p className="font-mono text-lg font-semibold text-text-primary">
             {latest ? formatCents(usdCentsToEurCents(latest.totalValueUsd)) : '—'}
           </p>
+          {ytdVariationPct !== null && (
+            <div className="mt-0.5 flex justify-end">
+              <Variation percent={ytdVariationPct} />
+            </div>
+          )}
           {latest && <p className="text-[11px] text-text-muted">{formatDate(latest.fetchedAt)}</p>}
         </div>
       </div>

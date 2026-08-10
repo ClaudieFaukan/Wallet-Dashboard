@@ -24,8 +24,11 @@ export function useCryptoLatestValues() {
   return { wallets: wallets.data ?? [], histories, total, isLoading };
 }
 
-/** Sums comptes + investissements + crypto + collectibles into a net worth
- * total in EUR cents. No "− dettes": the schema has no debts entity. */
+/** Sums comptes + investissements + crypto + collectibles + immobilier into a
+ * gross net worth total in EUR cents (matches Finary's default "Patrimoine
+ * brut" view — assets only). Crédits are exposed separately as
+ * `liabilitiesTotal` / `netTotal` rather than subtracted from `total`, so a
+ * future "Patrimoine net" toggle can reuse them without recomputing. */
 export function useNetWorth() {
   const accounts = useQuery({ queryKey: ['accounts'], queryFn: api.accounts.list });
   const investments = useQuery({ queryKey: ['investments'], queryFn: api.investments.list });
@@ -33,22 +36,37 @@ export function useNetWorth() {
     queryKey: ['collectibles', 'performance'],
     queryFn: () => api.collectibles.performance(),
   });
+  const realEstate = useQuery({ queryKey: ['real-estate'], queryFn: api.realEstate.list });
+  const credits = useQuery({ queryKey: ['credits'], queryFn: api.credits.list });
   const crypto = useCryptoLatestValues();
 
   const accountsTotal = (accounts.data ?? []).reduce((sum, a) => sum + a.balance, 0);
   const investmentsTotal = (investments.data ?? []).reduce((sum, i) => sum + i.currentValue, 0);
   const collectiblesTotal = collectibles.data?.totals.totalCurrentValue ?? 0;
+  const realEstateTotal = (realEstate.data ?? []).reduce((sum, r) => sum + r.currentValue, 0);
+  const liabilitiesTotal = (credits.data ?? []).reduce((sum, c) => sum + c.remainingAmount, 0);
 
   const isLoading =
-    accounts.isLoading || investments.isLoading || collectibles.isLoading || crypto.isLoading;
+    accounts.isLoading ||
+    investments.isLoading ||
+    collectibles.isLoading ||
+    realEstate.isLoading ||
+    credits.isLoading ||
+    crypto.isLoading;
+
+  const total = accountsTotal + investmentsTotal + crypto.total + collectiblesTotal + realEstateTotal;
 
   return {
-    total: accountsTotal + investmentsTotal + crypto.total + collectiblesTotal,
+    total,
+    netTotal: total - liabilitiesTotal,
+    liabilitiesTotal,
     breakdown: {
       accounts: accountsTotal,
       investments: investmentsTotal,
       crypto: crypto.total,
       collectibles: collectiblesTotal,
+      realEstate: realEstateTotal,
+      credits: liabilitiesTotal,
     },
     isLoading,
   };

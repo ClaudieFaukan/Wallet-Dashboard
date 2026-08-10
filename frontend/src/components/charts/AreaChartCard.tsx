@@ -11,6 +11,7 @@ interface AreaChartCardProps {
   formatValue?: (value: number) => string;
   color?: string;
   height?: number;
+  className?: string;
 }
 
 export function AreaChartCard({
@@ -21,11 +22,12 @@ export function AreaChartCard({
   formatValue = (v) => String(v),
   color = chartColors.gold,
   height = 260,
+  className = '',
 }: AreaChartCardProps) {
   const gradientId = `area-gradient-${color.replace('#', '')}`;
 
   return (
-    <Card>
+    <Card className={className}>
       {(title ?? header ?? actions) && (
         <div className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">

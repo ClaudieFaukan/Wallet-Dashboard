@@ -27,6 +27,26 @@ export function useInfiniteTransactions(filters: Omit<ListTransactionsQuery, 'cu
   });
 }
 
+/** Income/expense/net for the current calendar month — used by the
+ * Transactions page header, deliberately independent of whatever filters
+ * are applied to the list below (which only covers loaded pages and would
+ * misrepresent a total once pagination kicks in). */
+export function useCurrentMonthStats() {
+  const now = new Date();
+  const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['transactions', 'stats', 'current-month', dateFrom],
+    queryFn: () => api.transactions.stats({ dateFrom, dateTo }),
+  });
+
+  const totalIncome = (data?.byMonth ?? []).reduce((sum, m) => sum + m.totalIncome, 0);
+  const totalExpense = (data?.byMonth ?? []).reduce((sum, m) => sum + m.totalExpense, 0);
+
+  return { totalIncome, totalExpense, net: totalIncome + totalExpense, isLoading };
+}
+
 export function useCategories() {
   return useQuery({ queryKey: ['categories'], queryFn: api.categories.list });
 }
