@@ -2,7 +2,7 @@ import { date, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'dr
 import { id, timestamps } from './_helpers.js';
 import { users } from './users.js';
 
-export const collectibleItemTypeEnum = pgEnum('collectible_item_type', ['card', 'sealed']);
+export const collectibleItemTypeEnum = pgEnum('collectible_item_type', ['card', 'sealed', 'watch']);
 export const collectiblePriceSourceEnum = pgEnum('collectible_price_source', [
   'tcgdex',
   'manual',
@@ -67,6 +67,14 @@ export const collectibleItems = pgTable('collectible_items', {
   // Sealed-only fields (item_type = 'sealed')
   sealedType: collectibleSealedTypeEnum('sealed_type'),
   sealedLanguage: collectibleSealedLanguageEnum('sealed_language'),
+
+  // Watch-only fields (item_type = 'watch') — FEAT-13 (docs/feat1.md): no reliable public
+  // pricing API exists (Chrono24 has none), so watches are always priceSource='manual'.
+  brand: text('brand'),
+  model: text('model'),
+  reference: text('reference'),
+  year: integer('year'),
+  watchCondition: text('watch_condition'),
 
   ...timestamps,
 });

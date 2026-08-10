@@ -30,6 +30,17 @@ export const createCollectibleSchema = z.discriminatedUnion('itemType', [
     sealedLanguage: z.enum(['FR', 'EN', 'JP']).optional(),
     priceSource: z.enum(['manual', 'pokemonpricetracker', 'poketrace']).default('manual'),
   }),
+  z.object({
+    itemType: z.literal('watch'),
+    ...baseFields,
+    brand: z.string().optional(),
+    model: z.string().optional(),
+    reference: z.string().optional(),
+    year: z.number().int().optional(),
+    watchCondition: z.string().optional(),
+    // No pricing API exists for watches (Chrono24 has none) — always manual.
+    priceSource: z.literal('manual').default('manual'),
+  }),
 ]);
 export type CreateCollectibleInput = z.infer<typeof createCollectibleSchema>;
 
@@ -47,6 +58,11 @@ export const updateCollectibleSchema = z.object({
   tcgType: tcgTypeEnum.optional(),
   sealedType: z.enum(['booster_box', 'etb', 'blister', 'collection', 'display']).optional(),
   sealedLanguage: z.enum(['FR', 'EN', 'JP']).optional(),
+  brand: z.string().optional(),
+  model: z.string().optional(),
+  reference: z.string().optional(),
+  year: z.number().int().optional(),
+  watchCondition: z.string().optional(),
 });
 export type UpdateCollectibleInput = z.infer<typeof updateCollectibleSchema>;
 
@@ -58,13 +74,13 @@ export const manualPriceUpdateSchema = z.object({
 export type ManualPriceUpdateInput = z.infer<typeof manualPriceUpdateSchema>;
 
 export const listCollectiblesQuerySchema = z.object({
-  type: z.enum(['card', 'sealed']).optional(),
+  type: z.enum(['card', 'sealed', 'watch']).optional(),
 });
 export type ListCollectiblesQuery = z.infer<typeof listCollectiblesQuerySchema>;
 
 export const performanceQuerySchema = z.object({
   sort: z.enum(['best_performers', 'worst_performers']).optional(),
-  type: z.enum(['card', 'sealed']).optional(),
+  type: z.enum(['card', 'sealed', 'watch']).optional(),
 });
 export type PerformanceQuery = z.infer<typeof performanceQuerySchema>;
 

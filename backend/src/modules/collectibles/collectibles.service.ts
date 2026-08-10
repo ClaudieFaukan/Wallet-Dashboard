@@ -32,7 +32,7 @@ export class CollectiblesService {
     };
   }
 
-  async list(userId: string, type?: 'card' | 'sealed') {
+  async list(userId: string, type?: 'card' | 'sealed' | 'watch') {
     const conditions = [eq(schema.collectibleItems.userId, userId)];
     if (type) conditions.push(eq(schema.collectibleItems.itemType, type));
     return this.db

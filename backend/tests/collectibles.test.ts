@@ -102,6 +102,29 @@ describe('collectibles module', () => {
       expect(res.body.data.priceSource).toBe('manual');
     });
 
+    it('creates a watch, always with a manual price source', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const res = await agent
+        .post('/api/v1/collectibles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          itemType: 'watch',
+          name: 'Submariner Date',
+          purchasePrice: 950000,
+          purchaseDate: '2024-05-01',
+          brand: 'Rolex',
+          model: 'Submariner',
+          reference: '126610LN',
+          year: 2023,
+          watchCondition: 'Occasion — excellent état',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.priceSource).toBe('manual');
+      expect(res.body.data.brand).toBe('Rolex');
+      expect(res.body.data.reference).toBe('126610LN');
+    });
+
     it('lists items filtered by type', async () => {
       const { agent, accessToken } = await registerAndGetToken();
       await agent
