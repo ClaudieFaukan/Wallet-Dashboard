@@ -410,6 +410,9 @@ export type CollectibleCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG';
 export type CollectibleSealedType = 'booster_box' | 'etb' | 'blister' | 'collection' | 'display';
 export type CollectibleSealedLanguage = 'FR' | 'EN' | 'JP';
 export type CollectiblePriceSource = 'tcgdex' | 'manual' | 'pokemonpricetracker' | 'poketrace';
+// Only 'pokemon' has a real search/price integration (TCGdex is Pokémon-only) — the rest are
+// stored for organization, manual price entry only. See collectibles.schema.ts on the backend.
+export type TcgType = 'pokemon' | 'onepiece' | 'dragonball' | 'digimon' | 'lorcana' | 'starwars';
 
 export interface CollectibleItem {
   id: string;
@@ -425,6 +428,7 @@ export interface CollectibleItem {
   cardNumber: string | null;
   condition: CollectibleCondition | null;
   tcgdexId: string | null;
+  tcgType: TcgType;
   sealedType: CollectibleSealedType | null;
   sealedLanguage: CollectibleSealedLanguage | null;
   createdAt: string;
@@ -443,6 +447,7 @@ export type CreateCollectibleInput =
       cardNumber?: string;
       condition?: CollectibleCondition;
       tcgdexId?: string;
+      tcgType?: TcgType;
       priceSource?: 'tcgdex' | 'manual';
     }
   | {
@@ -491,6 +496,7 @@ export interface UpdateCollectibleInput {
   cardNumber?: string;
   condition?: CollectibleCondition;
   tcgdexId?: string;
+  tcgType?: TcgType;
   sealedType?: CollectibleSealedType;
   sealedLanguage?: CollectibleSealedLanguage;
 }

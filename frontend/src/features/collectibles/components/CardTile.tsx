@@ -11,6 +11,14 @@ const sourceLabels: Record<string, string> = {
   tcgdex_tcgplayer: 'TCGPlayer',
 };
 
+const gameLabels: Record<string, string> = {
+  onepiece: 'One Piece',
+  dragonball: 'Dragon Ball',
+  digimon: 'Digimon',
+  lorcana: 'Lorcana',
+  starwars: 'Star Wars Unlimited',
+};
+
 export function CardTile({
   item,
   performance,
@@ -50,6 +58,7 @@ export function CardTile({
       <div className="mt-1 flex items-center gap-2">
         {item.condition && <Badge variant="neutral">{item.condition}</Badge>}
         {sourceLabel && <Badge variant="accent">{sourceLabel}</Badge>}
+        {gameLabels[item.tcgType] && <Badge variant="neutral">{gameLabels[item.tcgType]}</Badge>}
       </div>
       <div className="mt-3 flex items-center justify-between text-xs">
         <div>

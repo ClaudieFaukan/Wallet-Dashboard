@@ -6,27 +6,47 @@ import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { getErrorMessage } from '../../../lib/api';
-import type { CardSearchResult, CollectibleCondition } from '../../../types/api';
+import type { CardSearchResult, CollectibleCondition, TcgType } from '../../../types/api';
 import { useCreateCollectible, useSearchCard } from '../hooks/useCollectibles';
 
+const GAME_LABELS: Record<TcgType, string> = {
+  pokemon: 'Pokémon',
+  onepiece: 'One Piece',
+  dragonball: 'Dragon Ball',
+  digimon: 'Digimon',
+  lorcana: 'Lorcana',
+  starwars: 'Star Wars Unlimited',
+};
+
 export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [tcgType, setTcgType] = useState<TcgType>('pokemon');
   const [query, setQuery] = useState('');
+  const [manualName, setManualName] = useState('');
   const [selected, setSelected] = useState<CardSearchResult | null>(null);
   const [purchasePrice, setPurchasePrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [condition, setCondition] = useState<CollectibleCondition>('NM');
   const [notes, setNotes] = useState('');
 
+  const isPokemon = tcgType === 'pokemon';
   const debouncedQuery = useDebouncedValue(query, 300);
-  const search = useSearchCard(debouncedQuery);
+  const search = useSearchCard(debouncedQuery, tcgType);
   const create = useCreateCollectible();
   const toast = useToast();
 
   function reset() {
+    setTcgType('pokemon');
     setQuery('');
+    setManualName('');
     setSelected(null);
     setPurchasePrice('');
     setNotes('');
+  }
+
+  function handleManualContinue(e: FormEvent) {
+    e.preventDefault();
+    if (!manualName.trim()) return;
+    setSelected({ tcgdexId: '', name: manualName.trim(), setName: null, cardNumber: null, imageUrl: null });
   }
 
   function handleSubmit(e: FormEvent) {
@@ -39,7 +59,9 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
         setName: selected.setName ?? undefined,
         imageUrl: selected.imageUrl ?? undefined,
         cardNumber: selected.cardNumber ?? undefined,
-        tcgdexId: selected.tcgdexId,
+        tcgdexId: selected.tcgdexId || undefined,
+        tcgType,
+        priceSource: selected.tcgdexId ? 'tcgdex' : 'manual',
         purchasePrice: Math.round(Number(purchasePrice) * 100),
         purchaseDate: new Date(purchaseDate).toISOString(),
         condition,
@@ -58,43 +80,76 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Drawer open={open} onClose={onClose} title="Ajouter une carte">
+      <Select
+        label="Jeu"
+        value={tcgType}
+        onChange={(e) => {
+          setTcgType(e.target.value as TcgType);
+          setSelected(null);
+        }}
+        className="mb-4"
+      >
+        {Object.entries(GAME_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </Select>
+
       {!selected ? (
-        <div className="flex flex-col gap-3">
-          <Input
-            label="Rechercher une carte"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Pikachu…"
-            autoFocus
-          />
-          {query.length > 0 && query.length <= 1 && (
-            <p className="text-xs text-text-muted">Encore un caractère…</p>
-          )}
-          {search.isFetching && <p className="text-xs text-text-muted">Recherche…</p>}
-          <ul className="max-h-80 space-y-1 overflow-y-auto">
-            {!search.isFetching &&
-              search.data?.map((result) => (
-                <li key={result.tcgdexId}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(result)}
-                    className="flex w-full items-center gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm hover:border-accent-gold"
-                  >
-                    {result.imageUrl && (
-                      <img src={result.imageUrl} alt="" className="h-10 w-10 rounded object-contain" />
-                    )}
-                    <div>
-                      <p className="text-text-primary">{result.name}</p>
-                      <p className="text-xs text-text-muted">{result.setName ?? 'Set inconnu'}</p>
-                    </div>
-                  </button>
-                </li>
-              ))}
-            {!search.isFetching && debouncedQuery.length > 1 && search.data?.length === 0 && (
-              <li className="text-sm text-text-muted">Aucun résultat</li>
+        isPokemon ? (
+          <div className="flex flex-col gap-3">
+            <Input
+              label="Rechercher une carte"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Pikachu…"
+              autoFocus
+            />
+            {query.length > 0 && query.length <= 1 && (
+              <p className="text-xs text-text-muted">Encore un caractère…</p>
             )}
-          </ul>
-        </div>
+            {search.isFetching && <p className="text-xs text-text-muted">Recherche…</p>}
+            <ul className="max-h-80 space-y-1 overflow-y-auto">
+              {!search.isFetching &&
+                search.data?.map((result) => (
+                  <li key={result.tcgdexId}>
+                    <button
+                      type="button"
+                      onClick={() => setSelected(result)}
+                      className="flex w-full items-center gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2 text-left text-sm hover:border-accent-gold"
+                    >
+                      {result.imageUrl && (
+                        <img src={result.imageUrl} alt="" className="h-10 w-10 rounded object-contain" />
+                      )}
+                      <div>
+                        <p className="text-text-primary">{result.name}</p>
+                        <p className="text-xs text-text-muted">{result.setName ?? 'Set inconnu'}</p>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              {!search.isFetching && debouncedQuery.length > 1 && search.data?.length === 0 && (
+                <li className="text-sm text-text-muted">Aucun résultat</li>
+              )}
+            </ul>
+          </div>
+        ) : (
+          <form onSubmit={handleManualContinue} className="flex flex-col gap-3">
+            <p className="text-xs text-text-muted">
+              Recherche automatique indisponible pour {GAME_LABELS[tcgType]} — ajoute la carte
+              manuellement, le prix se met à jour à la main ensuite.
+            </p>
+            <Input
+              label="Nom de la carte"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              autoFocus
+              required
+            />
+            <Button type="submit">Continuer</Button>
+          </form>
+        )
       ) : (
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex items-center gap-3 rounded-lg border border-border bg-bg-elevated px-3 py-2">

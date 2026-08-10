@@ -43,6 +43,7 @@ import type {
   SettingsStatus,
   StockQuote,
   SyncPricesResult,
+  TcgType,
   TestSettingInput,
   TestSettingResult,
   Transaction,
@@ -279,8 +280,12 @@ export const api = {
     syncPrices: () => unwrap(client.post<ApiResponse<SyncPricesResult>>('/collectibles/sync-prices')),
     performance: (query: { sort?: 'best_performers' | 'worst_performers'; type?: 'card' | 'sealed' } = {}) =>
       unwrap(client.get<ApiResponse<CollectiblePerformance>>('/collectibles/performance', { params: query })),
-    searchCard: (q: string) =>
-      unwrap(client.get<ApiResponse<CardSearchResult[]>>('/collectibles/search/card', { params: { q } })),
+    searchCard: (q: string, tcgType: TcgType = 'pokemon') =>
+      unwrap(
+        client.get<ApiResponse<CardSearchResult[]>>('/collectibles/search/card', {
+          params: { q, tcgType },
+        }),
+      ),
     config: () => unwrap(client.get<ApiResponse<CollectiblesConfig>>('/collectibles/config')),
   },
 

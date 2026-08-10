@@ -28,6 +28,17 @@ export const collectibleSealedLanguageEnum = pgEnum('collectible_sealed_language
   'EN',
   'JP',
 ]);
+// FEAT-11 (docs/feat1.md): only 'pokemon' has a real search/price integration (TCGdex is
+// Pokémon-only, verified against tcgdex.dev — the doc's claim that it also covers these other
+// games doesn't hold) — the rest are stored for organization, manual price entry only.
+export const collectibleTcgTypeEnum = pgEnum('collectible_tcg_type', [
+  'pokemon',
+  'onepiece',
+  'dragonball',
+  'digimon',
+  'lorcana',
+  'starwars',
+]);
 
 export type CollectiblePriceSource = (typeof collectiblePriceSourceEnum.enumValues)[number];
 export type CollectiblePriceSnapshotSource =
@@ -51,6 +62,7 @@ export const collectibleItems = pgTable('collectible_items', {
   cardNumber: text('card_number'),
   condition: collectibleConditionEnum('condition'),
   tcgdexId: text('tcgdex_id'),
+  tcgType: collectibleTcgTypeEnum('tcg_type').notNull().default('pokemon'),
 
   // Sealed-only fields (item_type = 'sealed')
   sealedType: collectibleSealedTypeEnum('sealed_type'),

@@ -11,6 +11,8 @@ const baseFields = {
   purchaseDate: isoDate,
 };
 
+const tcgTypeEnum = z.enum(['pokemon', 'onepiece', 'dragonball', 'digimon', 'lorcana', 'starwars']);
+
 export const createCollectibleSchema = z.discriminatedUnion('itemType', [
   z.object({
     itemType: z.literal('card'),
@@ -18,6 +20,7 @@ export const createCollectibleSchema = z.discriminatedUnion('itemType', [
     cardNumber: z.string().optional(),
     condition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).optional(),
     tcgdexId: z.string().optional(),
+    tcgType: tcgTypeEnum.default('pokemon'),
     priceSource: z.enum(['tcgdex', 'manual']).default('tcgdex'),
   }),
   z.object({
@@ -41,6 +44,7 @@ export const updateCollectibleSchema = z.object({
   cardNumber: z.string().optional(),
   condition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).optional(),
   tcgdexId: z.string().optional(),
+  tcgType: tcgTypeEnum.optional(),
   sealedType: z.enum(['booster_box', 'etb', 'blister', 'collection', 'display']).optional(),
   sealedLanguage: z.enum(['FR', 'EN', 'JP']).optional(),
 });
@@ -66,5 +70,6 @@ export type PerformanceQuery = z.infer<typeof performanceQuerySchema>;
 
 export const searchCardQuerySchema = z.object({
   q: z.string().min(1),
+  tcgType: tcgTypeEnum.default('pokemon'),
 });
 export type SearchCardQuery = z.infer<typeof searchCardQuerySchema>;

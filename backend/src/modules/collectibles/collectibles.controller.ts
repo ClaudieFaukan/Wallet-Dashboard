@@ -121,8 +121,8 @@ export class CollectiblesController {
 
   searchCard: RequestHandler = async (req, res, next) => {
     try {
-      const { q } = req.query as unknown as SearchCardQuery;
-      const results = await this.collectiblesService.searchCard(q);
+      const { q, tcgType } = req.query as unknown as SearchCardQuery;
+      const results = await this.collectiblesService.searchCard(q, tcgType);
       res.json({ success: true, data: results });
     } catch (err) {
       next(err);

@@ -5,6 +5,7 @@ import type {
   CollectibleItemType,
   CreateCollectibleInput,
   ManualPriceUpdateInput,
+  TcgType,
   UpdateCollectibleInput,
 } from '../../../types/api';
 
@@ -32,11 +33,11 @@ export function useCollectiblesConfig() {
   return useQuery({ queryKey: [...collectiblesKey, 'config'], queryFn: api.collectibles.config });
 }
 
-export function useSearchCard(q: string) {
+export function useSearchCard(q: string, tcgType: TcgType = 'pokemon') {
   return useQuery({
-    queryKey: [...collectiblesKey, 'search', q],
-    queryFn: () => api.collectibles.searchCard(q),
-    enabled: q.length > 1,
+    queryKey: [...collectiblesKey, 'search', q, tcgType],
+    queryFn: () => api.collectibles.searchCard(q, tcgType),
+    enabled: q.length > 1 && tcgType === 'pokemon',
   });
 }
 

@@ -71,6 +71,13 @@
       "when": 1786368535190,
       "tag": "0009_fixed_marvex",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786370545249,
+      "tag": "0010_ordinary_wendigo",
+      "breakpoints": true
     }
   ]
 }

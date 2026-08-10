@@ -216,7 +216,10 @@ export class CollectiblesService {
     };
   }
 
-  async searchCard(query: string) {
+  async searchCard(query: string, tcgType: string) {
+    // TCGdex only covers Pokémon (verified against tcgdex.dev — see schema comment on
+    // collectibleTcgTypeEnum) — other games have no search backend, manual entry only.
+    if (tcgType !== 'pokemon') return [];
     return searchTcgdexCards(query);
   }
 }

@@ -1,0 +1,2 @@
+CREATE TYPE "public"."collectible_tcg_type" AS ENUM('pokemon', 'onepiece', 'dragonball', 'digimon', 'lorcana', 'starwars');--> statement-breakpoint
+ALTER TABLE "collectible_items" ADD COLUMN "tcg_type" "collectible_tcg_type" DEFAULT 'pokemon' NOT NULL;
