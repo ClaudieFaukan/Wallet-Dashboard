@@ -16,11 +16,15 @@ import type {
   CreateAccountInput,
   CreateCategoryInput,
   CreateCollectibleInput,
+  CreateCreditInput,
   CreateEntryInput,
   CreateInvestmentAccountInput,
   CreateSavingsGoalInput,
   CreateTransactionInput,
   CreateWalletInput,
+  Credit,
+  CreditPayment,
+  CreditSimulation,
   CryptoSnapshot,
   CryptoWallet,
   CsvImportResult,
@@ -46,8 +50,10 @@ import type {
   UpdateTransactionInput,
   UpdateInvestmentAccountInput,
   UpdateSavingsGoalInput,
+  UpdateCreditInput,
   UpdateSettingsInput,
   UpdateWalletInput,
+  RecordCreditPaymentInput,
   UpdateCollectibleInput,
   WalletTokensResponse,
 } from '../types/api';
@@ -285,5 +291,27 @@ export const api = {
 
   exchangeRates: {
     latest: () => unwrap(client.get<ApiResponse<ExchangeRates>>('/exchange-rates/latest')),
+  },
+
+  credits: {
+    list: () => unwrap(client.get<ApiResponse<Credit[]>>('/credits')),
+    getById: (id: string) => unwrap(client.get<ApiResponse<Credit>>(`/credits/${id}`)),
+    create: (input: CreateCreditInput) => unwrap(client.post<ApiResponse<Credit>>('/credits', input)),
+    update: (id: string, input: UpdateCreditInput) =>
+      unwrap(client.patch<ApiResponse<Credit>>(`/credits/${id}`, input)),
+    delete: (id: string) => client.delete(`/credits/${id}`),
+    recordPayment: (id: string, input: RecordCreditPaymentInput) =>
+      unwrap(client.post<ApiResponse<{ payment: CreditPayment; credit: Credit }>>(
+        `/credits/${id}/payments`,
+        input,
+      )),
+    payments: (id: string) =>
+      unwrap(client.get<ApiResponse<CreditPayment[]>>(`/credits/${id}/payments`)),
+    simulation: (id: string, earlyRepaymentDate: string) =>
+      unwrap(
+        client.get<ApiResponse<CreditSimulation>>(`/credits/${id}/simulation`, {
+          params: { earlyRepaymentDate },
+        }),
+      ),
   },
 };

@@ -43,6 +43,13 @@
       "when": 1786358300377,
       "tag": "0005_demonic_rick_jones",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786363347381,
+      "tag": "0006_solid_komodo",
+      "breakpoints": true
     }
   ]
 }

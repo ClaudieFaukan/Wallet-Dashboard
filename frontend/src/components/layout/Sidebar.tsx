@@ -3,6 +3,7 @@ import {
   ArrowLeftRight,
   Bitcoin,
   LayoutDashboard,
+  Landmark,
   PiggyBank,
   Settings,
   Sparkles,
@@ -21,6 +22,7 @@ const navItems = [
   { to: '/investments', label: 'Investir', icon: TrendingUp },
   { to: '/crypto', label: 'Crypto', icon: Bitcoin },
   { to: '/collectibles', label: 'Collectibles', icon: Sparkles },
+  { to: '/credits', label: 'Crédits', icon: Landmark },
 ];
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) =>

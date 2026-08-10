@@ -255,6 +255,71 @@ export interface InvestmentMilestonesView {
   currentTotal: number;
 }
 
+export interface Credit {
+  id: string;
+  userId: string;
+  name: string;
+  institution: string;
+  initialAmount: number;
+  remainingAmount: number;
+  monthlyPayment: number;
+  interestRate: number;
+  startDate: string;
+  endDate: string;
+  earlyRepaymentFeeRate: number;
+  currency: string;
+}
+
+export interface CreateCreditInput {
+  name: string;
+  institution: string;
+  initialAmount: number;
+  remainingAmount: number;
+  monthlyPayment: number;
+  interestRate: number;
+  startDate: string;
+  endDate: string;
+  earlyRepaymentFeeRate?: number;
+  currency?: string;
+}
+
+export type UpdateCreditInput = Partial<CreateCreditInput>;
+
+export interface CreditPayment {
+  id: string;
+  creditId: string;
+  date: string;
+  amount: number;
+  principalPart: number;
+  interestPart: number;
+}
+
+export interface RecordCreditPaymentInput {
+  date: string;
+  amount: number;
+  principalPart: number;
+  interestPart: number;
+}
+
+export interface CreditSimulationPoint {
+  month: number;
+  date: string;
+  doNothing: number;
+  earlyRepayment: number;
+}
+
+export interface CreditSimulation {
+  earlyRepaymentDate: string;
+  monthsUntilRepayment: number;
+  totalRemaining: number;
+  interestSaved: number;
+  earlyRepaymentFee: number;
+  netGain: number;
+  freedMonthlyBudget: number;
+  investmentProjection: number;
+  points: CreditSimulationPoint[];
+}
+
 export interface ProjectionPoint {
   month: number;
   date: string;

@@ -9,6 +9,7 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { budgetRouter } from './modules/budget/budget.routes.js';
 import { categoriesRouter } from './modules/categories/categories.routes.js';
 import { collectiblesRouter } from './modules/collectibles/collectibles.routes.js';
+import { creditsRouter } from './modules/credits/credits.routes.js';
 import { cryptoRouter } from './modules/crypto/crypto.routes.js';
 import { exchangeRatesRouter } from './modules/exchange-rates/exchange-rates.routes.js';
 import { investmentsRouter } from './modules/investments/investments.routes.js';
@@ -37,6 +38,7 @@ export function createApp() {
   app.use('/api/v1/budget', budgetRouter);
   app.use('/api/v1/categories', categoriesRouter);
   app.use('/api/v1/collectibles', collectiblesRouter);
+  app.use('/api/v1/credits', creditsRouter);
   app.use('/api/v1/crypto', cryptoRouter);
   app.use('/api/v1/exchange-rates', exchangeRatesRouter);
   app.use('/api/v1/investments', investmentsRouter);
