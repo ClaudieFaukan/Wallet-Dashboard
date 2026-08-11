@@ -1,0 +1,2 @@
+CREATE TYPE "public"."investment_entry_type" AS ENUM('contribution', 'dividend');--> statement-breakpoint
+ALTER TABLE "investment_entries" ADD COLUMN "entry_type" "investment_entry_type" DEFAULT 'contribution' NOT NULL;

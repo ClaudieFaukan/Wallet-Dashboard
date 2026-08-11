@@ -12,7 +12,11 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    // Stops all clicks inside the drawer (including its close button) from bubbling to
+    // whatever rendered it — matters when a Drawer is nested inside a clickable card
+    // (e.g. InvestmentAccountCard), since it's a fixed overlay visually but a normal
+    // descendant in the React tree, not a portal.
+    <div className="fixed inset-0 z-50 flex justify-end" onClick={(e) => e.stopPropagation()}>
       <button
         aria-label="Fermer"
         className="absolute inset-0 bg-black/60"

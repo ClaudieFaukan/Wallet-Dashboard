@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card } from '../../../components/ui/Card';
 import { LineChartCard } from '../../../components/charts/LineChartCard';
 import { MilestoneMarker } from '../../../components/charts/MilestoneMarker';
 import { formatDate } from '../../../lib/format';
@@ -51,8 +50,7 @@ export function DcaSimulator({ accountId }: { accountId: string }) {
   const milestones = (projection?.milestones ?? []).filter((m) => !m.reached);
 
   return (
-    <Card>
-      <h3 className="mb-4 text-sm font-medium text-text-muted">Simulateur DCA</h3>
+    <div>
       <div className="grid grid-cols-3 gap-6">
         <Slider
           label="Apport mensuel"
@@ -105,6 +103,6 @@ export function DcaSimulator({ accountId }: { accountId: string }) {
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

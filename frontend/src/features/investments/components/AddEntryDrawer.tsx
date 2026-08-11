@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Drawer } from '../../../components/ui/Drawer';
-import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { useMilestoneCelebration } from '../../../components/ui/MilestoneCelebration';
 import { getErrorMessage } from '../../../lib/api';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
+import type { InvestmentAssetType, InvestmentEntryType } from '../../../types/api';
 import { useAddEntry } from '../hooks/useInvestments';
+import { EntryFormFields } from './EntryFormFields';
 
 export function AddEntryDrawer({
   accountId,
@@ -20,7 +21,11 @@ export function AddEntryDrawer({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [amountInvested, setAmountInvested] = useState('0');
   const [portfolioValue, setPortfolioValue] = useState('0');
+  const [entryType, setEntryType] = useState<InvestmentEntryType>('contribution');
   const [ticker, setTicker] = useState('');
+  const [assetType, setAssetType] = useState<InvestmentAssetType>('etf');
+  const [isin, setIsin] = useState('');
+  const [shares, setShares] = useState('');
   const addEntry = useAddEntry();
   const toast = useToast();
   const celebrate = useMilestoneCelebration();
@@ -35,7 +40,11 @@ export function AddEntryDrawer({
           date: new Date(date).toISOString(),
           amountInvested: Math.round(Number(amountInvested) * 100),
           portfolioValue: Math.round(Number(portfolioValue) * 100),
+          entryType,
           ticker: ticker || undefined,
+          assetType: ticker ? assetType : undefined,
+          isin: isin || undefined,
+          shares: shares ? Number(shares) : undefined,
         },
       },
       {
@@ -43,7 +52,7 @@ export function AddEntryDrawer({
           if (result.reachedMilestones.length > 0) {
             celebrate(result.reachedMilestones.map((m) => formatCents(m.amount)));
           } else {
-            toast.success('Entrée DCA enregistrée');
+            toast.success(entryType === 'dividend' ? 'Dividende enregistré' : 'Entrée DCA enregistrée');
           }
           onClose();
         },
@@ -55,27 +64,23 @@ export function AddEntryDrawer({
   return (
     <Drawer open={open} onClose={onClose} title="Ajouter une entrée DCA">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-        <Input
-          label="Montant versé (€)"
-          type="number"
-          step="0.01"
-          value={amountInvested}
-          onChange={(e) => setAmountInvested(e.target.value)}
-        />
-        <Input
-          label="Valeur du portefeuille après versement (€)"
-          type="number"
-          step="0.01"
-          value={portfolioValue}
-          onChange={(e) => setPortfolioValue(e.target.value)}
-          required
-        />
-        <Input
-          label="Ticker (optionnel — ex. IWDA.AS)"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          placeholder="Suivi du cours via Alpha Vantage"
+        <EntryFormFields
+          date={date}
+          onDateChange={setDate}
+          amountInvested={amountInvested}
+          onAmountInvestedChange={setAmountInvested}
+          portfolioValue={portfolioValue}
+          onPortfolioValueChange={setPortfolioValue}
+          entryType={entryType}
+          onEntryTypeChange={setEntryType}
+          ticker={ticker}
+          onTickerChange={setTicker}
+          assetType={assetType}
+          onAssetTypeChange={setAssetType}
+          isin={isin}
+          onIsinChange={setIsin}
+          shares={shares}
+          onSharesChange={setShares}
         />
         <Button type="submit" disabled={addEntry.isPending}>
           {addEntry.isPending ? 'Enregistrement…' : 'Ajouter'}

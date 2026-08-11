@@ -222,28 +222,42 @@ export interface CreateInvestmentAccountInput {
 
 export type UpdateInvestmentAccountInput = Partial<CreateInvestmentAccountInput>;
 
+export type InvestmentAssetType = 'stock' | 'etf';
+export type InvestmentEntryType = 'contribution' | 'dividend';
+
 export interface InvestmentEntry {
   id: string;
   investmentAccountId: string;
   date: string;
   amountInvested: number;
   portfolioValue: number;
+  entryType: InvestmentEntryType;
   notes: string | null;
   ticker: string | null;
+  assetType: InvestmentAssetType | null;
+  isin: string | null;
+  shares: number | null;
 }
 
 export interface CreateEntryInput {
   date: string;
   amountInvested: number;
   portfolioValue: number;
+  entryType?: InvestmentEntryType;
   notes?: string;
   ticker?: string;
+  assetType?: InvestmentAssetType;
+  isin?: string;
+  shares?: number;
 }
+
+export type UpdateEntryInput = Partial<CreateEntryInput>;
 
 export interface StockQuote {
   symbol: string;
   price: number;
   changePercent: number;
+  currency: string | null;
   fetchedAt: string;
 }
 
@@ -264,6 +278,24 @@ export interface InvestmentMilestonesView {
   next: { amount: number; progress: number; missingAmount: number }[];
   currentTotal: number;
 }
+
+export interface InvestmentGoal {
+  id: string;
+  userId: string;
+  name: string;
+  targetAmount: number;
+  color: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateInvestmentGoalInput {
+  name: string;
+  targetAmount: number;
+  color?: string;
+}
+
+export type UpdateInvestmentGoalInput = Partial<CreateInvestmentGoalInput>;
 
 export interface Credit {
   id: string;

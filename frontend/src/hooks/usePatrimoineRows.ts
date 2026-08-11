@@ -170,7 +170,11 @@ export function usePatrimoineRows() {
 
   (investments.data ?? []).forEach((acc, i) => {
     const entries = investmentEntries[i]?.data ?? [];
-    const totalInvested = entries.reduce((sum, e) => sum + e.amountInvested, 0);
+    // Dividends aren't cost basis (not money out of the user's pocket) — excluded here too,
+    // consistent with InvestmentDetailPage/PositionsCard.
+    const totalInvested = entries
+      .filter((e) => e.entryType !== 'dividend')
+      .reduce((sum, e) => sum + e.amountInvested, 0);
     const points = entries.map((e) => ({ date: dayKey(e.date), value: e.portfolioValue }));
     const series = forwardFill(points, grid);
     const { ytdVariation, ytdVariationPct, sparkline, rawStart, rawLatest } = deriveVariation(series, grid);

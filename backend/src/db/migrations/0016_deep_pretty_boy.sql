@@ -1,0 +1,1 @@
+ALTER TABLE "stock_quotes" ADD COLUMN "currency" text;

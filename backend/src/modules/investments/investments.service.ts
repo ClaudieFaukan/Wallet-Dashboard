@@ -1,12 +1,15 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
 import { AppError } from '../../shared/utils/AppError.js';
 import type {
   CreateEntryInput,
   CreateInvestmentAccountInput,
+  CreateInvestmentGoalInput,
   ProjectionQuery,
+  UpdateEntryInput,
   UpdateInvestmentAccountInput,
+  UpdateInvestmentGoalInput,
 } from './investments.schema.js';
 
 // 20K / 50K / 100K / 1M € in cents, tracked at the user level (across all of
@@ -70,15 +73,16 @@ export class InvestmentsService {
         date: new Date(input.date),
         amountInvested: input.amountInvested,
         portfolioValue: input.portfolioValue,
+        entryType: input.entryType,
         notes: input.notes,
         ticker: input.ticker,
+        assetType: input.assetType,
+        isin: input.isin,
+        shares: input.shares,
       })
       .returning();
 
-    await this.db
-      .update(schema.investmentAccounts)
-      .set({ currentValue: input.portfolioValue })
-      .where(eq(schema.investmentAccounts.id, accountId));
+    await this.recomputeCurrentValue(accountId);
 
     const reachedMilestones = await this.checkMilestones(userId);
     return { entry, reachedMilestones };
@@ -91,6 +95,66 @@ export class InvestmentsService {
       .from(schema.investmentEntries)
       .where(eq(schema.investmentEntries.investmentAccountId, accountId))
       .orderBy(asc(schema.investmentEntries.date));
+  }
+
+  async updateEntry(userId: string, accountId: string, entryId: string, input: UpdateEntryInput) {
+    await this.getEntryOrThrow(userId, accountId, entryId);
+
+    const [entry] = await this.db
+      .update(schema.investmentEntries)
+      .set({
+        ...(input.date !== undefined && { date: new Date(input.date) }),
+        ...(input.amountInvested !== undefined && { amountInvested: input.amountInvested }),
+        ...(input.portfolioValue !== undefined && { portfolioValue: input.portfolioValue }),
+        ...(input.entryType !== undefined && { entryType: input.entryType }),
+        ...(input.notes !== undefined && { notes: input.notes }),
+        ...(input.ticker !== undefined && { ticker: input.ticker }),
+        ...(input.assetType !== undefined && { assetType: input.assetType }),
+        ...(input.isin !== undefined && { isin: input.isin }),
+        ...(input.shares !== undefined && { shares: input.shares }),
+      })
+      .where(eq(schema.investmentEntries.id, entryId))
+      .returning();
+
+    await this.recomputeCurrentValue(accountId);
+    return entry;
+  }
+
+  async deleteEntry(userId: string, accountId: string, entryId: string): Promise<void> {
+    await this.getEntryOrThrow(userId, accountId, entryId);
+    await this.db.delete(schema.investmentEntries).where(eq(schema.investmentEntries.id, entryId));
+    await this.recomputeCurrentValue(accountId);
+  }
+
+  private async getEntryOrThrow(userId: string, accountId: string, entryId: string) {
+    await this.getById(userId, accountId);
+    const [entry] = await this.db
+      .select()
+      .from(schema.investmentEntries)
+      .where(
+        and(
+          eq(schema.investmentEntries.id, entryId),
+          eq(schema.investmentEntries.investmentAccountId, accountId),
+        ),
+      );
+    if (!entry) throw new AppError(404, 'INVESTMENT_ENTRY_NOT_FOUND', 'Investment entry not found');
+    return entry;
+  }
+
+  // The account's "current value" always mirrors the portfolioValue of its most recent entry
+  // by date (or 0 with no entries left) — kept consistent after every add/edit/delete.
+  private async recomputeCurrentValue(accountId: string): Promise<void> {
+    const [latest] = await this.db
+      .select({ portfolioValue: schema.investmentEntries.portfolioValue })
+      .from(schema.investmentEntries)
+      .where(eq(schema.investmentEntries.investmentAccountId, accountId))
+      .orderBy(desc(schema.investmentEntries.date))
+      .limit(1);
+
+    await this.db
+      .update(schema.investmentAccounts)
+      .set({ currentValue: latest?.portfolioValue ?? 0 })
+      .where(eq(schema.investmentAccounts.id, accountId));
   }
 
   async getMilestones(userId: string) {
@@ -147,6 +211,46 @@ export class InvestmentsService {
     }));
 
     return { points, milestones };
+  }
+
+  async listGoals(userId: string) {
+    return this.db
+      .select()
+      .from(schema.investmentGoals)
+      .where(eq(schema.investmentGoals.userId, userId))
+      .orderBy(asc(schema.investmentGoals.createdAt));
+  }
+
+  async createGoal(userId: string, input: CreateInvestmentGoalInput) {
+    const [goal] = await this.db
+      .insert(schema.investmentGoals)
+      .values({ userId, ...input })
+      .returning();
+    return goal;
+  }
+
+  async updateGoal(userId: string, id: string, input: UpdateInvestmentGoalInput) {
+    await this.getGoalOrThrow(userId, id);
+    const [goal] = await this.db
+      .update(schema.investmentGoals)
+      .set(input)
+      .where(eq(schema.investmentGoals.id, id))
+      .returning();
+    return goal;
+  }
+
+  async deleteGoal(userId: string, id: string): Promise<void> {
+    await this.getGoalOrThrow(userId, id);
+    await this.db.delete(schema.investmentGoals).where(eq(schema.investmentGoals.id, id));
+  }
+
+  private async getGoalOrThrow(userId: string, id: string) {
+    const [goal] = await this.db
+      .select()
+      .from(schema.investmentGoals)
+      .where(and(eq(schema.investmentGoals.id, id), eq(schema.investmentGoals.userId, userId)));
+    if (!goal) throw new AppError(404, 'INVESTMENT_GOAL_NOT_FOUND', 'Investment goal not found');
+    return goal;
   }
 
   private async getTotalValue(userId: string): Promise<number> {

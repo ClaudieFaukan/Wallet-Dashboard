@@ -20,6 +20,7 @@ import type {
   CreateCreditInput,
   CreateEntryInput,
   CreateInvestmentAccountInput,
+  CreateInvestmentGoalInput,
   CreateSavingsGoalInput,
   CreateTransactionInput,
   CreateWalletInput,
@@ -33,6 +34,7 @@ import type {
   ExchangeRates,
   InvestmentAccount,
   InvestmentEntry,
+  InvestmentGoal,
   InvestmentMilestonesView,
   ListTransactionsQuery,
   ManualPriceUpdateInput,
@@ -55,7 +57,9 @@ import type {
   TransactionStats,
   UpdateAccountInput,
   UpdateTransactionInput,
+  UpdateEntryInput,
   UpdateInvestmentAccountInput,
+  UpdateInvestmentGoalInput,
   UpdateSavingsGoalInput,
   UpdateCreditInput,
   UpdateSettingsInput,
@@ -244,6 +248,12 @@ export const api = {
       unwrap(client.post<ApiResponse<AddEntryResult>>(`/investments/${id}/entry`, input)),
     entries: (id: string) =>
       unwrap(client.get<ApiResponse<InvestmentEntry[]>>(`/investments/${id}/entries`)),
+    updateEntry: (id: string, entryId: string, input: UpdateEntryInput) =>
+      unwrap(
+        client.patch<ApiResponse<InvestmentEntry>>(`/investments/${id}/entry/${entryId}`, input),
+      ),
+    deleteEntry: (id: string, entryId: string) =>
+      client.delete(`/investments/${id}/entry/${entryId}`),
     projection: (id: string, query: ProjectionQuery = {}) =>
       unwrap(
         client.get<ApiResponse<ProjectionResult>>(`/investments/${id}/projection`, {
@@ -254,6 +264,12 @@ export const api = {
       unwrap(client.get<ApiResponse<InvestmentMilestonesView>>('/investments/milestones')),
     quote: (symbol: string) =>
       unwrap(client.get<ApiResponse<StockQuote>>('/investments/quote', { params: { symbol } })),
+    goals: () => unwrap(client.get<ApiResponse<InvestmentGoal[]>>('/investments/goals')),
+    createGoal: (input: CreateInvestmentGoalInput) =>
+      unwrap(client.post<ApiResponse<InvestmentGoal>>('/investments/goals', input)),
+    updateGoal: (id: string, input: UpdateInvestmentGoalInput) =>
+      unwrap(client.patch<ApiResponse<InvestmentGoal>>(`/investments/goals/${id}`, input)),
+    deleteGoal: (id: string) => client.delete(`/investments/goals/${id}`),
   },
 
   crypto: {

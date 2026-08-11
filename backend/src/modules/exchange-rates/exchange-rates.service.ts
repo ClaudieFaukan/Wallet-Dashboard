@@ -4,7 +4,10 @@ import * as schema from '../../db/schema/index.js';
 import { getFrankfurterRates } from '../../integrations/frankfurter/frankfurter.client.js';
 
 const BASE_CURRENCY = 'EUR';
-const DISPLAY_CURRENCIES = ['USD', 'CAD'] as const;
+// USD/CAD were the original display-currency choices; GBP/CHF added so investment quotes from
+// tickers listed on the LSE/SIX can be converted too (see investments quote.service.ts) — same
+// free Frankfurter call, no extra cost to track a few more.
+const DISPLAY_CURRENCIES = ['USD', 'CAD', 'GBP', 'CHF'] as const;
 
 export interface ExchangeRatesResult {
   date: string;

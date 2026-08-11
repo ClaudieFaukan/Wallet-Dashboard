@@ -92,6 +92,34 @@
       "when": 1786374213526,
       "tag": "0012_quiet_sentinels",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786454706498,
+      "tag": "0013_burly_justin_hammer",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786456817032,
+      "tag": "0014_pretty_grandmaster",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786458431577,
+      "tag": "0015_mighty_hellfire_club",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786460142713,
+      "tag": "0016_deep_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

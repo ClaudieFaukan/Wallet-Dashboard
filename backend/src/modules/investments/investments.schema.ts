@@ -17,15 +17,32 @@ export const createEntrySchema = z.object({
   date: isoDate,
   amountInvested: z.number().int(),
   portfolioValue: z.number().int(),
+  entryType: z.enum(['contribution', 'dividend']).default('contribution'),
   notes: z.string().optional(),
   ticker: z.string().optional(),
+  assetType: z.enum(['stock', 'etf']).optional(),
+  isin: z.string().trim().min(1).max(20).optional(),
+  shares: z.number().positive().optional(),
 });
 export type CreateEntryInput = z.infer<typeof createEntrySchema>;
+
+export const updateEntrySchema = createEntrySchema.partial();
+export type UpdateEntryInput = z.infer<typeof updateEntrySchema>;
 
 export const quoteQuerySchema = z.object({
   symbol: z.string().min(1),
 });
 export type QuoteQuery = z.infer<typeof quoteQuerySchema>;
+
+export const createInvestmentGoalSchema = z.object({
+  name: z.string().min(1),
+  targetAmount: z.number().int().positive(),
+  color: z.string().optional(),
+});
+export type CreateInvestmentGoalInput = z.infer<typeof createInvestmentGoalSchema>;
+
+export const updateInvestmentGoalSchema = createInvestmentGoalSchema.partial();
+export type UpdateInvestmentGoalInput = z.infer<typeof updateInvestmentGoalSchema>;
 
 export const projectionQuerySchema = z.object({
   monthlyContribution: z.coerce.number().int().default(0),
