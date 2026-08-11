@@ -35,22 +35,40 @@ export async function fetchTcgdexCardPrice(tcgdexId: string): Promise<PriceResul
 export interface CardSearchResult {
   tcgdexId: string;
   name: string;
-  // TCGdex's card-list/search endpoint returns brief results with no set
-  // info attached — only the detail endpoint (fetchTcgdexCardPrice) has it.
   setName: string | null;
   cardNumber: string | null;
   imageUrl: string | null;
 }
 
 export async function searchTcgdexCards(query: string): Promise<CardSearchResult[]> {
-  const results = await sdk.card.list(Query.create().equal('name', query));
-  return results.map((card) => ({
-    tcgdexId: card.id,
-    name: card.name,
-    setName: null,
-    cardNumber: card.localId,
-    imageUrl: card.image ? `${card.image}/high.webp` : null,
-  }));
+  // `equal` requires an exact, case-sensitive match on the card name (e.g. "pikachu"
+  // returns nothing, only "Pikachu" does) — `like` does a case-insensitive partial
+  // match, which is what a user typing a search term expects.
+  console.log(`[tcgdex] searchCard query="${query}"`);
+
+  // TCGdex's card-list/search endpoint returns brief results (id/localId/name/image
+  // only) with no set info attached — only the detail endpoint has it. Rather than
+  // fetching every result's detail (one request per card), we recover the set from
+  // the id itself: card ids are always formatted as `${setId}-${localId}`, so we can
+  // strip the trailing `-${localId}` and resolve the name against the full sets list
+  // (~200 sets, fetched once and cached internally by the SDK).
+  const [results, sets] = await Promise.all([
+    sdk.card.list(Query.create().like('name', query)),
+    sdk.set.list(),
+  ]);
+  const setNameById = new Map(sets.map((set) => [set.id, set.name]));
+
+  console.log(`[tcgdex] searchCard query="${query}" -> ${results.length} result(s)`);
+  return results.map((card) => {
+    const setId = card.id.slice(0, card.id.lastIndexOf('-'));
+    return {
+      tcgdexId: card.id,
+      name: card.name,
+      setName: setNameById.get(setId) ?? null,
+      cardNumber: card.localId,
+      imageUrl: card.image ? `${card.image}/high.webp` : null,
+    };
+  });
 }
 
 export const tcgdexProvider: IPriceProvider = {

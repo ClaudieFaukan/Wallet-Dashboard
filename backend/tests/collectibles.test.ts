@@ -11,6 +11,7 @@ const originalTcgdexFetch = TCGdex.fetch;
 
 afterEach(() => {
   TCGdex.fetch = originalTcgdexFetch;
+  vi.unstubAllGlobals();
 });
 
 async function registerAndGetToken() {
@@ -231,6 +232,168 @@ describe('collectibles module', () => {
         .get(`/api/v1/collectibles/${id}`)
         .set('Authorization', `Bearer ${accessToken}`);
       expect(getRes.body.data.history).toHaveLength(1);
+    });
+  });
+
+  describe('PATCH & DELETE /:id/price/:snapshotId', () => {
+    async function createItemWithSnapshot(agent: ReturnType<typeof request.agent>, accessToken: string) {
+      const createRes = await agent
+        .post('/api/v1/collectibles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ itemType: 'sealed', name: 'Scellé', purchasePrice: 10000, purchaseDate: '2026-01-01' });
+      const itemId = createRes.body.data.id as string;
+      const priceRes = await agent
+        .put(`/api/v1/collectibles/${itemId}/price`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ priceEur: 12000, note: 'vu sur Cardmarket' });
+      return { itemId, snapshotId: priceRes.body.data.id as string };
+    }
+
+    it('edits a price snapshot (fixes a typo)', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const { itemId, snapshotId } = await createItemWithSnapshot(agent, accessToken);
+
+      const res = await agent
+        .patch(`/api/v1/collectibles/${itemId}/price/${snapshotId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ priceEur: 9000, note: 'corrigé' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toMatchObject({ id: snapshotId, marketPriceEur: 9000 });
+
+      const getRes = await agent
+        .get(`/api/v1/collectibles/${itemId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(getRes.body.data.history[0].marketPriceEur).toBe(9000);
+    });
+
+    it('deletes a price snapshot', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const { itemId, snapshotId } = await createItemWithSnapshot(agent, accessToken);
+
+      const res = await agent
+        .delete(`/api/v1/collectibles/${itemId}/price/${snapshotId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(res.status).toBe(204);
+
+      const getRes = await agent
+        .get(`/api/v1/collectibles/${itemId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(getRes.body.data.history).toEqual([]);
+    });
+
+    it('rejects editing/deleting a snapshot belonging to another user\'s item', async () => {
+      // Single-user registration is enforced (REGISTRATION_CLOSED past the first account) —
+      // same workaround as "rejects access to another user's item" above: insert the foreign
+      // user/item/snapshot directly rather than registering a second account.
+      const { agent, accessToken } = await registerAndGetToken();
+      const [otherUser] = await db
+        .insert(schema.users)
+        .values({ email: 'other-snap@example.com', passwordHash: 'x', name: 'Other' })
+        .returning();
+      const [foreignItem] = await db
+        .insert(schema.collectibleItems)
+        .values({
+          userId: otherUser!.id,
+          itemType: 'sealed',
+          name: 'Not yours',
+          purchasePrice: 100,
+          purchaseDate: '2026-01-01',
+        })
+        .returning();
+      const [foreignSnapshot] = await db
+        .insert(schema.collectiblePriceSnapshots)
+        .values({ itemId: foreignItem!.id, marketPriceEur: 500, source: 'manual' })
+        .returning();
+
+      const patchRes = await agent
+        .patch(`/api/v1/collectibles/${foreignItem!.id}/price/${foreignSnapshot!.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ priceEur: 1 });
+      expect(patchRes.status).toBe(404);
+
+      const deleteRes = await agent
+        .delete(`/api/v1/collectibles/${foreignItem!.id}/price/${foreignSnapshot!.id}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(deleteRes.status).toBe(404);
+    });
+  });
+
+  describe('GET /:id/image', () => {
+    it('proxies the stored image with a guessed Referer', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/collectibles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          itemType: 'sealed',
+          name: 'Scellé',
+          purchasePrice: 10000,
+          purchaseDate: '2026-01-01',
+          imageUrl: 'https://product-images.s3.cardmarket.com/53/846734/846734.jpg',
+        });
+      const id = createRes.body.data.id as string;
+
+      const fetchMock = vi.fn(() =>
+        Promise.resolve({
+          ok: true,
+          headers: new Headers({ 'content-type': 'image/jpeg' }),
+          arrayBuffer: () => Promise.resolve(new Uint8Array([1, 2, 3]).buffer),
+        }),
+      );
+      vi.stubGlobal('fetch', fetchMock);
+
+      const res = await agent
+        .get(`/api/v1/collectibles/${id}/image`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toBe('image/jpeg');
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://product-images.s3.cardmarket.com/53/846734/846734.jpg',
+        expect.objectContaining({
+          headers: expect.objectContaining({ Referer: 'https://cardmarket.com/' }),
+        }),
+      );
+    });
+
+    it('returns 404 when the item has no image', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/collectibles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ itemType: 'sealed', name: 'Scellé', purchasePrice: 10000, purchaseDate: '2026-01-01' });
+      const id = createRes.body.data.id as string;
+
+      const res = await agent
+        .get(`/api/v1/collectibles/${id}/image`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 502 when the upstream image fetch fails', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/collectibles')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          itemType: 'sealed',
+          name: 'Scellé',
+          purchasePrice: 10000,
+          purchaseDate: '2026-01-01',
+          imageUrl: 'https://example.com/broken.jpg',
+        });
+      const id = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.resolve({ ok: false, headers: new Headers(), arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) })),
+      );
+
+      const res = await agent
+        .get(`/api/v1/collectibles/${id}/image`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(res.status).toBe(502);
     });
   });
 

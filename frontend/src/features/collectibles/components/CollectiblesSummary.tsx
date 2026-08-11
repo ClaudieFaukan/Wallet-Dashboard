@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
+import { Tabs } from '../../../components/ui/Tabs';
 import { useToast } from '../../../components/ui/Toast';
 import { AreaChartCard } from '../../../components/charts/AreaChartCard';
 import { getErrorMessage } from '../../../lib/api';
@@ -10,11 +12,23 @@ import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { bucketMonthly } from '../../../hooks/useNetWorthHistory';
 import { useCollectiblePerformance, useCollectiblesValueHistory, useSyncPrices } from '../hooks/useCollectibles';
 
-function PerformanceTable({ title, rows }: { title: string; rows: { id: string; name: string; gainLossPct: number | null }[] }) {
+type PerformanceRow = { id: string; name: string; gainLossPct: number | null };
+
+function PerformanceTabsCard({ best, worst }: { best: PerformanceRow[]; worst: PerformanceRow[] }) {
+  const [tab, setTab] = useState<'best' | 'worst'>('best');
+  const rows = tab === 'best' ? best : worst;
+
   return (
-    <Card>
-      <h3 className="mb-3 text-sm font-medium text-text-muted">{title}</h3>
-      <ul className="space-y-2">
+    <Card className="col-span-12 lg:col-span-4">
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: 'best', label: 'Top 5' },
+          { value: 'worst', label: 'Flop 5' },
+        ]}
+      />
+      <ul className="mt-3 space-y-2">
         {rows.length === 0 && <li className="text-sm text-text-muted">Pas assez de données</li>}
         {rows.map((r) => (
           <li key={r.id} className="flex items-center justify-between text-sm">
@@ -92,11 +106,15 @@ export function CollectiblesSummary() {
         </Button>
       </div>
 
-      <AreaChartCard title="Valeur de la collection" data={monthly} formatValue={(v) => formatCents(v)} />
-
-      <div className="grid grid-cols-2 gap-4">
-        <PerformanceTable title="Top 5 performers" rows={best?.items.slice(0, 5) ?? []} />
-        <PerformanceTable title="Flop 5" rows={worst?.items.slice(0, 5) ?? []} />
+      <div className="grid grid-cols-12 gap-4">
+        <AreaChartCard
+          title="Valeur de la collection"
+          data={monthly}
+          formatValue={(v) => formatCents(v)}
+          height={150}
+          className="col-span-12 lg:col-span-8"
+        />
+        <PerformanceTabsCard best={best?.items.slice(0, 5) ?? []} worst={worst?.items.slice(0, 5) ?? []} />
       </div>
     </div>
   );

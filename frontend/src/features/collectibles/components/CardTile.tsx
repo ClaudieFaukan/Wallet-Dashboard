@@ -5,6 +5,7 @@ import { formatPercent } from '../../../lib/format';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CollectibleItem, CollectiblePerformanceRow } from '../../../types/api';
 import { useCollectibleWithHistory } from '../hooks/useCollectibles';
+import { CollectibleImage } from './CollectibleImage';
 
 const sourceLabels: Record<string, string> = {
   tcgdex_cardmarket: 'Cardmarket',
@@ -17,6 +18,12 @@ const gameLabels: Record<string, string> = {
   digimon: 'Digimon',
   lorcana: 'Lorcana',
   starwars: 'Star Wars Unlimited',
+};
+
+const cardLanguageLabels: Record<string, string> = {
+  FR: 'FR',
+  EN: 'EN',
+  JP: 'JP',
 };
 
 export function CardTile({
@@ -47,16 +54,25 @@ export function CardTile({
         <Pencil size={14} />
       </button>
       <div className="flex aspect-[3/4] items-center justify-center overflow-hidden rounded-lg bg-bg-elevated">
-        {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" />
-        ) : (
-          <span className="text-xs text-text-muted">Pas d'image</span>
-        )}
+        <CollectibleImage
+          itemId={item.id}
+          imageUrl={item.imageUrl}
+          updatedAt={item.updatedAt}
+          alt={item.name}
+          className="h-full w-full object-contain"
+        />
       </div>
       <p className="mt-3 truncate text-sm font-semibold text-text-primary">{item.name}</p>
       <p className="truncate text-xs text-text-muted">{item.setName ?? 'Set inconnu'}</p>
-      <div className="mt-1 flex items-center gap-2">
-        {item.condition && <Badge variant="neutral">{item.condition}</Badge>}
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        {item.gradingCompany ? (
+          <Badge variant="accent">
+            {item.gradingCompany === 'other' ? 'Gradée' : item.gradingCompany} {item.gradingScore}
+          </Badge>
+        ) : (
+          item.condition && <Badge variant="neutral">{item.condition}</Badge>
+        )}
+        {item.language && <Badge variant="neutral">{cardLanguageLabels[item.language]}</Badge>}
         {sourceLabel && <Badge variant="accent">{sourceLabel}</Badge>}
         {gameLabels[item.tcgType] && <Badge variant="neutral">{gameLabels[item.tcgType]}</Badge>}
       </div>

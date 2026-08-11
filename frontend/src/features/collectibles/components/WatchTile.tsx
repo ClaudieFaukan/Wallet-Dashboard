@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { formatPercent } from '../../../lib/format';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CollectibleItem, CollectiblePerformanceRow } from '../../../types/api';
+import { CollectibleImage } from './CollectibleImage';
 
 export function WatchTile({
   item,
@@ -32,11 +33,13 @@ export function WatchTile({
         <Pencil size={14} />
       </button>
       <div className="flex aspect-[3/4] items-center justify-center overflow-hidden rounded-lg bg-bg-elevated">
-        {item.imageUrl ? (
-          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain" />
-        ) : (
-          <span className="text-xs text-text-muted">Pas d'image</span>
-        )}
+        <CollectibleImage
+          itemId={item.id}
+          imageUrl={item.imageUrl}
+          updatedAt={item.updatedAt}
+          alt={item.name}
+          className="h-full w-full object-contain"
+        />
       </div>
       <p className="mt-3 truncate text-sm font-semibold text-text-primary">{item.name}</p>
       <p className="truncate text-xs text-text-muted">

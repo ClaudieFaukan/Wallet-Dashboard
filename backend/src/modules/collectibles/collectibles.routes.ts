@@ -47,3 +47,10 @@ collectiblesRouter.put(
   validate(manualPriceUpdateSchema),
   collectiblesController.updatePrice,
 );
+collectiblesRouter.patch(
+  '/:id/price/:snapshotId',
+  validate(manualPriceUpdateSchema),
+  collectiblesController.updatePriceSnapshot,
+);
+collectiblesRouter.delete('/:id/price/:snapshotId', collectiblesController.deletePriceSnapshot);
+collectiblesRouter.get('/:id/image', collectiblesController.getImage);

@@ -1,4 +1,4 @@
-import { date, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { date, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { id, timestamps } from './_helpers.js';
 import { users } from './users.js';
 
@@ -27,6 +27,19 @@ export const collectibleSealedLanguageEnum = pgEnum('collectible_sealed_language
   'FR',
   'EN',
   'JP',
+]);
+// Separate type from collectibleSealedLanguageEnum even though the values are identical —
+// cards and sealed products are different item types with independently evolving option
+// lists (e.g. cards are far more likely to gain DE/IT/ES prints than sealed product).
+export const collectibleCardLanguageEnum = pgEnum('collectible_card_language', ['FR', 'EN', 'JP']);
+// PSA/BGS/CGC/SGC cover the vast majority of graded Pokémon cards in circulation;
+// 'other' is the catch-all for less common graders (details go in `notes`).
+export const collectibleGradingCompanyEnum = pgEnum('collectible_grading_company', [
+  'PSA',
+  'BGS',
+  'CGC',
+  'SGC',
+  'other',
 ]);
 // FEAT-11 (docs/feat1.md): only 'pokemon' has a real search/price integration (TCGdex is
 // Pokémon-only, verified against tcgdex.dev — the doc's claim that it also covers these other
@@ -63,6 +76,12 @@ export const collectibleItems = pgTable('collectible_items', {
   condition: collectibleConditionEnum('condition'),
   tcgdexId: text('tcgdex_id'),
   tcgType: collectibleTcgTypeEnum('tcg_type').notNull().default('pokemon'),
+  language: collectibleCardLanguageEnum('language'),
+  // Null gradingCompany means the card is raw/ungraded (`condition` applies instead).
+  gradingCompany: collectibleGradingCompanyEnum('grading_company'),
+  // e.g. 9.5 for a PSA 9.5 — numeric (not float) so 9.5 stays exact, matching this
+  // codebase's no-float rule for anything stored with a fixed decimal meaning.
+  gradingScore: numeric('grading_score', { precision: 3, scale: 1, mode: 'number' }),
 
   // Sealed-only fields (item_type = 'sealed')
   sealedType: collectibleSealedTypeEnum('sealed_type'),

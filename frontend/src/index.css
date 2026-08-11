@@ -43,6 +43,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--color-bg-elevated);
+  /* border-hover, not bg-elevated: drawers (Drawer.tsx) are themselves bg-elevated,
+     so a bg-elevated thumb disappears against its own container — e.g. the card
+     search list in AddCardDrawer looked like it was hard-clipped with no way to
+     tell more results existed below. */
+  background-color: var(--color-border-hover);
   border-radius: 9999px;
 }

@@ -98,6 +98,50 @@ export class CollectiblesController {
     }
   };
 
+  updatePriceSnapshot: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const snapshot = await this.collectiblesService.updatePriceSnapshot(
+        user.id,
+        req.params.id as string,
+        req.params.snapshotId as string,
+        req.body as ManualPriceUpdateInput,
+      );
+      res.json({ success: true, data: snapshot });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deletePriceSnapshot: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      await this.collectiblesService.deletePriceSnapshot(
+        user.id,
+        req.params.id as string,
+        req.params.snapshotId as string,
+      );
+      res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getImage: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const { contentType, buffer } = await this.collectiblesService.getImage(
+        user.id,
+        req.params.id as string,
+      );
+      res.setHeader('Cache-Control', 'private, max-age=86400');
+      res.setHeader('Content-Type', contentType);
+      res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  };
+
   syncPrices: RequestHandler = async (req, res, next) => {
     try {
       const { user } = req as AuthenticatedRequest;
@@ -122,7 +166,9 @@ export class CollectiblesController {
   searchCard: RequestHandler = async (req, res, next) => {
     try {
       const { q, tcgType } = req.query as unknown as SearchCardQuery;
+      console.log(`[collectibles] searchCard request q="${q}" tcgType="${tcgType}"`);
       const results = await this.collectiblesService.searchCard(q, tcgType);
+      console.log(`[collectibles] searchCard response for q="${q}": ${results.length} result(s)`);
       res.json({ success: true, data: results });
     } catch (err) {
       next(err);

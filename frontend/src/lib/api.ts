@@ -10,6 +10,7 @@ import type {
   CardSearchResult,
   Category,
   CollectiblePerformance,
+  CollectiblePriceSnapshot,
   CollectiblesConfig,
   CollectibleWithHistory,
   CollectibleItem,
@@ -318,6 +319,16 @@ export const api = {
       unwrap(
         client.put<ApiResponse<unknown>>(`/collectibles/${id}/price`, input),
       ),
+    updatePriceSnapshot: (id: string, snapshotId: string, input: ManualPriceUpdateInput) =>
+      unwrap(
+        client.patch<ApiResponse<CollectiblePriceSnapshot>>(`/collectibles/${id}/price/${snapshotId}`, input),
+      ),
+    deletePriceSnapshot: (id: string, snapshotId: string) =>
+      client.delete(`/collectibles/${id}/price/${snapshotId}`),
+    imageBlob: (id: string, version: string) =>
+      client
+        .get<Blob>(`/collectibles/${id}/image`, { params: { v: version }, responseType: 'blob' })
+        .then((r) => r.data),
     syncPrices: () => unwrap(client.post<ApiResponse<SyncPricesResult>>('/collectibles/sync-prices')),
     performance: (
       query: { sort?: 'best_performers' | 'worst_performers'; type?: CollectibleItemType } = {},

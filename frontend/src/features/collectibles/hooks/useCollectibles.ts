@@ -58,11 +58,44 @@ export function useUpdatePrice() {
   });
 }
 
+export function useUpdatePriceSnapshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      snapshotId,
+      input,
+    }: {
+      id: string;
+      snapshotId: string;
+      input: ManualPriceUpdateInput;
+    }) => api.collectibles.updatePriceSnapshot(id, snapshotId, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: collectiblesKey }),
+  });
+}
+
+export function useDeletePriceSnapshot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, snapshotId }: { id: string; snapshotId: string }) =>
+      api.collectibles.deletePriceSnapshot(id, snapshotId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: collectiblesKey }),
+  });
+}
+
 export function useUpdateCollectible() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: UpdateCollectibleInput }) =>
       api.collectibles.update(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: collectiblesKey }),
+  });
+}
+
+export function useDeleteCollectible() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.collectibles.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: collectiblesKey }),
   });
 }

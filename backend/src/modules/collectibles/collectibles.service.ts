@@ -18,6 +18,24 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Many image CDNs (e.g. Cardmarket's product-images bucket) 403 requests whose Referer
+// doesn't match their own site, even with no Referer at all — verified against the real
+// bucket. Guessing the registrable domain (last two hostname labels) as the Referer is
+// enough to pass that check for the sites we've hit in practice.
+function guessReferer(imageUrl: string): string | undefined {
+  try {
+    const { hostname, protocol } = new URL(imageUrl);
+    const labels = hostname.split('.');
+    const registrableDomain = labels.slice(-2).join('.');
+    return `${protocol}//${registrableDomain}/`;
+  } catch {
+    return undefined;
+  }
+}
+
+const IMAGE_PROXY_USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+
 export class CollectiblesService {
   constructor(
     private readonly db: NodePgDatabase<typeof schema>,
@@ -83,6 +101,30 @@ export class CollectiblesService {
     await this.db.delete(schema.collectibleItems).where(eq(schema.collectibleItems.id, id));
   }
 
+  // Proxies the item's stored image server-side rather than letting the browser hotlink it
+  // directly — CDNs like Cardmarket's reject cross-site Referers, so a plain <img src> to the
+  // stored URL just shows a broken image. Fetching here, with a spoofed Referer, works around it.
+  async getImage(userId: string, id: string): Promise<{ contentType: string; buffer: Buffer }> {
+    const item = await this.getById(userId, id);
+    if (!item.imageUrl) throw new AppError(404, 'IMAGE_NOT_FOUND', 'This item has no image');
+
+    const referer = guessReferer(item.imageUrl);
+    const headers: Record<string, string> = { 'User-Agent': IMAGE_PROXY_USER_AGENT };
+    if (referer) headers.Referer = referer;
+
+    let response: Response;
+    try {
+      response = await fetch(item.imageUrl, { headers });
+    } catch {
+      throw new AppError(502, 'IMAGE_FETCH_FAILED', 'Failed to fetch image');
+    }
+    if (!response.ok) throw new AppError(502, 'IMAGE_FETCH_FAILED', 'Failed to fetch image');
+
+    const contentType = response.headers.get('content-type') ?? 'application/octet-stream';
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return { contentType, buffer };
+  }
+
   async updateManualPrice(userId: string, id: string, input: ManualPriceUpdateInput) {
     await this.getById(userId, id);
     const [snapshot] = await this.db
@@ -96,6 +138,45 @@ export class CollectiblesService {
       })
       .returning();
     return snapshot;
+  }
+
+  async updatePriceSnapshot(
+    userId: string,
+    itemId: string,
+    snapshotId: string,
+    input: ManualPriceUpdateInput,
+  ) {
+    await this.getById(userId, itemId);
+    const [snapshot] = await this.db
+      .update(schema.collectiblePriceSnapshots)
+      .set({
+        marketPriceEur: input.priceEur,
+        marketPriceUsd: input.priceUsd ?? null,
+        rawData: input.note ? { note: input.note } : null,
+      })
+      .where(
+        and(
+          eq(schema.collectiblePriceSnapshots.id, snapshotId),
+          eq(schema.collectiblePriceSnapshots.itemId, itemId),
+        ),
+      )
+      .returning();
+    if (!snapshot) throw new AppError(404, 'SNAPSHOT_NOT_FOUND', 'Price snapshot not found');
+    return snapshot;
+  }
+
+  async deletePriceSnapshot(userId: string, itemId: string, snapshotId: string): Promise<void> {
+    await this.getById(userId, itemId);
+    const deleted = await this.db
+      .delete(schema.collectiblePriceSnapshots)
+      .where(
+        and(
+          eq(schema.collectiblePriceSnapshots.id, snapshotId),
+          eq(schema.collectiblePriceSnapshots.itemId, itemId),
+        ),
+      )
+      .returning({ id: schema.collectiblePriceSnapshots.id });
+    if (deleted.length === 0) throw new AppError(404, 'SNAPSHOT_NOT_FOUND', 'Price snapshot not found');
   }
 
   async syncPrices(userId: string) {

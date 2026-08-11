@@ -517,6 +517,8 @@ export type CollectibleItemType = 'card' | 'sealed' | 'watch';
 export type CollectibleCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG';
 export type CollectibleSealedType = 'booster_box' | 'etb' | 'blister' | 'collection' | 'display';
 export type CollectibleSealedLanguage = 'FR' | 'EN' | 'JP';
+export type CollectibleCardLanguage = 'FR' | 'EN' | 'JP';
+export type CollectibleGradingCompany = 'PSA' | 'BGS' | 'CGC' | 'SGC' | 'other';
 export type CollectiblePriceSource = 'tcgdex' | 'manual' | 'pokemonpricetracker' | 'poketrace';
 // Only 'pokemon' has a real search/price integration (TCGdex is Pokémon-only) — the rest are
 // stored for organization, manual price entry only. See collectibles.schema.ts on the backend.
@@ -537,6 +539,9 @@ export interface CollectibleItem {
   condition: CollectibleCondition | null;
   tcgdexId: string | null;
   tcgType: TcgType;
+  language: CollectibleCardLanguage | null;
+  gradingCompany: CollectibleGradingCompany | null;
+  gradingScore: number | null;
   sealedType: CollectibleSealedType | null;
   sealedLanguage: CollectibleSealedLanguage | null;
   brand: string | null;
@@ -561,6 +566,9 @@ export type CreateCollectibleInput =
       condition?: CollectibleCondition;
       tcgdexId?: string;
       tcgType?: TcgType;
+      language?: CollectibleCardLanguage;
+      gradingCompany?: CollectibleGradingCompany;
+      gradingScore?: number;
       priceSource?: 'tcgdex' | 'manual';
     }
   | {
@@ -625,6 +633,9 @@ export interface UpdateCollectibleInput {
   condition?: CollectibleCondition;
   tcgdexId?: string;
   tcgType?: TcgType;
+  language?: CollectibleCardLanguage;
+  gradingCompany?: CollectibleGradingCompany;
+  gradingScore?: number;
   sealedType?: CollectibleSealedType;
   sealedLanguage?: CollectibleSealedLanguage;
   brand?: string;

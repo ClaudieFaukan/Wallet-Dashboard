@@ -12,6 +12,9 @@ const baseFields = {
 };
 
 const tcgTypeEnum = z.enum(['pokemon', 'onepiece', 'dragonball', 'digimon', 'lorcana', 'starwars']);
+const cardLanguageEnum = z.enum(['FR', 'EN', 'JP']);
+const gradingCompanyEnum = z.enum(['PSA', 'BGS', 'CGC', 'SGC', 'other']);
+const gradingScore = z.number().min(1).max(10).multipleOf(0.5);
 
 export const createCollectibleSchema = z.discriminatedUnion('itemType', [
   z.object({
@@ -21,6 +24,9 @@ export const createCollectibleSchema = z.discriminatedUnion('itemType', [
     condition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).optional(),
     tcgdexId: z.string().optional(),
     tcgType: tcgTypeEnum.default('pokemon'),
+    language: cardLanguageEnum.optional(),
+    gradingCompany: gradingCompanyEnum.optional(),
+    gradingScore: gradingScore.optional(),
     priceSource: z.enum(['tcgdex', 'manual']).default('tcgdex'),
   }),
   z.object({
@@ -56,6 +62,9 @@ export const updateCollectibleSchema = z.object({
   condition: z.enum(['NM', 'LP', 'MP', 'HP', 'DMG']).optional(),
   tcgdexId: z.string().optional(),
   tcgType: tcgTypeEnum.optional(),
+  language: cardLanguageEnum.optional(),
+  gradingCompany: gradingCompanyEnum.optional(),
+  gradingScore: gradingScore.optional(),
   sealedType: z.enum(['booster_box', 'etb', 'blister', 'collection', 'display']).optional(),
   sealedLanguage: z.enum(['FR', 'EN', 'JP']).optional(),
   brand: z.string().optional(),

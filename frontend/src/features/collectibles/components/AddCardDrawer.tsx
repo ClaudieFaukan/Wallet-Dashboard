@@ -2,11 +2,18 @@ import { useState, type FormEvent } from 'react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { Toggle } from '../../../components/ui/Toggle';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import { getErrorMessage } from '../../../lib/api';
-import type { CardSearchResult, CollectibleCondition, TcgType } from '../../../types/api';
+import type {
+  CardSearchResult,
+  CollectibleCardLanguage,
+  CollectibleCondition,
+  CollectibleGradingCompany,
+  TcgType,
+} from '../../../types/api';
 import { useCreateCollectible, useSearchCard } from '../hooks/useCollectibles';
 
 const GAME_LABELS: Record<TcgType, string> = {
@@ -18,6 +25,20 @@ const GAME_LABELS: Record<TcgType, string> = {
   starwars: 'Star Wars Unlimited',
 };
 
+const CARD_LANGUAGE_LABELS: Record<CollectibleCardLanguage, string> = {
+  FR: 'Français',
+  EN: 'Anglais',
+  JP: 'Japonais',
+};
+
+const GRADING_COMPANY_LABELS: Record<CollectibleGradingCompany, string> = {
+  PSA: 'PSA',
+  BGS: 'BGS',
+  CGC: 'CGC',
+  SGC: 'SGC',
+  other: 'Autre',
+};
+
 export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [tcgType, setTcgType] = useState<TcgType>('pokemon');
   const [query, setQuery] = useState('');
@@ -26,6 +47,10 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const [purchasePrice, setPurchasePrice] = useState('');
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [condition, setCondition] = useState<CollectibleCondition>('NM');
+  const [language, setLanguage] = useState<CollectibleCardLanguage | ''>('');
+  const [graded, setGraded] = useState(false);
+  const [gradingCompany, setGradingCompany] = useState<CollectibleGradingCompany>('PSA');
+  const [gradingScore, setGradingScore] = useState('10');
   const [notes, setNotes] = useState('');
 
   const isPokemon = tcgType === 'pokemon';
@@ -40,6 +65,11 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
     setManualName('');
     setSelected(null);
     setPurchasePrice('');
+    setCondition('NM');
+    setLanguage('');
+    setGraded(false);
+    setGradingCompany('PSA');
+    setGradingScore('10');
     setNotes('');
   }
 
@@ -61,10 +91,12 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
         cardNumber: selected.cardNumber ?? undefined,
         tcgdexId: selected.tcgdexId || undefined,
         tcgType,
-        priceSource: selected.tcgdexId ? 'tcgdex' : 'manual',
+        language: language || undefined,
         purchasePrice: Math.round(Number(purchasePrice) * 100),
         purchaseDate: new Date(purchaseDate).toISOString(),
-        condition,
+        condition: graded ? undefined : condition,
+        gradingCompany: graded ? gradingCompany : undefined,
+        gradingScore: graded ? Number(gradingScore) : undefined,
         notes: notes || undefined,
       },
       {
@@ -180,13 +212,57 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
             onChange={(e) => setPurchaseDate(e.target.value)}
             required
           />
-          <Select label="Condition" value={condition} onChange={(e) => setCondition(e.target.value as CollectibleCondition)}>
-            <option value="NM">Near Mint (NM)</option>
-            <option value="LP">Lightly Played (LP)</option>
-            <option value="MP">Moderately Played (MP)</option>
-            <option value="HP">Heavily Played (HP)</option>
-            <option value="DMG">Damaged (DMG)</option>
+          <Select
+            label="Langue"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as CollectibleCardLanguage | '')}
+          >
+            <option value="">Non précisée</option>
+            {Object.entries(CARD_LANGUAGE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
           </Select>
+
+          <Toggle checked={graded} onChange={setGraded} label="Carte gradée" />
+
+          {graded ? (
+            <div className="flex gap-3">
+              <Select
+                label="Grading"
+                value={gradingCompany}
+                onChange={(e) => setGradingCompany(e.target.value as CollectibleGradingCompany)}
+                className="flex-1"
+              >
+                {Object.entries(GRADING_COMPANY_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+              <Input
+                label="Note"
+                type="number"
+                min="1"
+                max="10"
+                step="0.5"
+                value={gradingScore}
+                onChange={(e) => setGradingScore(e.target.value)}
+                className="w-24"
+                required
+              />
+            </div>
+          ) : (
+            <Select label="Condition" value={condition} onChange={(e) => setCondition(e.target.value as CollectibleCondition)}>
+              <option value="NM">Near Mint (NM)</option>
+              <option value="LP">Lightly Played (LP)</option>
+              <option value="MP">Moderately Played (MP)</option>
+              <option value="HP">Heavily Played (HP)</option>
+              <option value="DMG">Damaged (DMG)</option>
+            </Select>
+          )}
+
           <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
           <Button type="submit" disabled={create.isPending}>
             {create.isPending ? 'Ajout…' : 'Ajouter la carte'}
