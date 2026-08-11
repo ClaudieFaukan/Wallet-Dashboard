@@ -4,6 +4,7 @@ import { Pencil, RefreshCw } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Avatar } from '../../../components/ui/Avatar';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { Variation } from '../../../components/ui/Variation';
 import { useToast } from '../../../components/ui/Toast';
 import { SparklineChart } from '../../../components/charts/SparklineChart';
@@ -27,7 +28,7 @@ const platformLabels: Record<CryptoWallet['platform'], string> = {
 };
 
 export function WalletCard({ wallet, ytdVariationPct }: { wallet: CryptoWallet; ytdVariationPct: number | null }) {
-  const { data: history } = useCryptoHistory(wallet.id);
+  const { data: history, isLoading: historyLoading } = useCryptoHistory(wallet.id);
   const sync = useSyncWallet();
   const toast = useToast();
   const { formatCents } = useFormatCurrency();
@@ -64,20 +65,29 @@ export function WalletCard({ wallet, ytdVariationPct }: { wallet: CryptoWallet; 
           <Badge variant="accent">{platformLabels[wallet.platform]}</Badge>
         </div>
         <div className="shrink-0 text-right">
-          <p className="font-mono text-sm font-semibold text-text-primary">
-            {latest ? formatCents(usdCentsToEurCents(latest.totalValueUsd)) : '—'}
-          </p>
+          {historyLoading ? (
+            <Skeleton className="ml-auto h-4 w-16" />
+          ) : (
+            <p className="font-mono text-sm font-semibold text-text-primary">
+              {latest ? formatCents(usdCentsToEurCents(latest.totalValueUsd)) : '—'}
+            </p>
+          )}
           {ytdVariationPct !== null && <Variation percent={ytdVariationPct} className="text-xs" />}
         </div>
       </div>
 
-      {history && history.length > 1 && (
-        <div className="mt-3">
-          <SparklineChart
-            data={[...history].reverse().map((s) => usdCentsToEurCents(s.totalValueUsd))}
-            height={32}
-          />
-        </div>
+      {historyLoading ? (
+        <Skeleton className="mt-3 h-8 w-full" />
+      ) : (
+        history &&
+        history.length > 1 && (
+          <div className="mt-3">
+            <SparklineChart
+              data={[...history].reverse().map((s) => usdCentsToEurCents(s.totalValueUsd))}
+              height={32}
+            />
+          </div>
+        )
       )}
 
       <div className="mt-3 flex items-center justify-between">

@@ -3,6 +3,7 @@ import { useQueries } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Avatar } from '../../../components/ui/Avatar';
 import { Card } from '../../../components/ui/Card';
+import { Skeleton } from '../../../components/ui/Skeleton';
 import { Variation } from '../../../components/ui/Variation';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { api } from '../../../lib/api';
@@ -84,7 +85,7 @@ export function TopCryptosCarousel({ wallets }: { wallets: CryptoWallet[] }) {
     scrollerRef.current?.scrollBy({ left: delta, behavior: 'smooth' });
   }
 
-  if (isLoading || ranked.length === 0) return null;
+  if (!isLoading && ranked.length === 0) return null;
 
   return (
     <div>
@@ -108,11 +109,30 @@ export function TopCryptosCarousel({ wallets }: { wallets: CryptoWallet[] }) {
         </div>
       </div>
       <div ref={scrollerRef} className="flex gap-3 overflow-x-auto pb-1">
-        {ranked.map((row, i) => (
-          <CryptoMoverCard key={row.symbol} row={row} rank={i + 1} />
-        ))}
+        {isLoading
+          ? [1, 2, 3, 4].map((i) => <CryptoMoverCardSkeleton key={i} />)
+          : ranked.map((row, i) => <CryptoMoverCard key={row.symbol} row={row} rank={i + 1} />)}
       </div>
     </div>
+  );
+}
+
+function CryptoMoverCardSkeleton() {
+  return (
+    <Card className="flex w-[190px] shrink-0 flex-col gap-3 p-4">
+      <div className="flex items-start justify-between">
+        <Skeleton className="h-7 w-7 rounded-full" />
+        <Skeleton className="h-3.5 w-6" />
+      </div>
+      <div className="space-y-1.5">
+        <Skeleton className="h-3.5 w-24" />
+        <Skeleton className="h-3 w-12" />
+      </div>
+      <div className="space-y-1.5">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-3 w-14" />
+      </div>
+    </Card>
   );
 }
 
