@@ -174,6 +174,99 @@ describe('savings module', () => {
     });
   });
 
+  describe('PATCH & DELETE /:id/deposits/:depositId', () => {
+    it('recomputes currentAmount after editing a deposit amount', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/savings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Fonds urgence', targetAmount: 10000, type: 'custom' });
+      const goalId = createRes.body.data.id as string;
+
+      await agent
+        .post(`/api/v1/savings/${goalId}/deposit`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 3000 });
+
+      const listRes = await agent
+        .get(`/api/v1/savings/${goalId}/deposits`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      const firstDepositId = listRes.body.data[0].id as string;
+
+      const patchRes = await agent
+        .patch(`/api/v1/savings/${goalId}/deposits/${firstDepositId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 4000 });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.data.amount).toBe(4000);
+
+      const goalRes = await agent
+        .get(`/api/v1/savings/${goalId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(goalRes.body.data.currentAmount).toBe(4000);
+    });
+
+    it('recomputes currentAmount after deleting a deposit', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/savings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Fonds urgence', targetAmount: 10000, type: 'custom' });
+      const goalId = createRes.body.data.id as string;
+
+      await agent
+        .post(`/api/v1/savings/${goalId}/deposit`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 3000 });
+      await agent
+        .post(`/api/v1/savings/${goalId}/deposit`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 500 });
+
+      const listRes = await agent
+        .get(`/api/v1/savings/${goalId}/deposits`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      const toDelete = listRes.body.data.find((d: { amount: number }) => d.amount === 3000).id as string;
+
+      const deleteRes = await agent
+        .delete(`/api/v1/savings/${goalId}/deposits/${toDelete}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(deleteRes.status).toBe(204);
+
+      const goalRes = await agent
+        .get(`/api/v1/savings/${goalId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(goalRes.body.data.currentAmount).toBe(500);
+
+      const remaining = await agent
+        .get(`/api/v1/savings/${goalId}/deposits`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(remaining.body.data).toHaveLength(1);
+    });
+
+    it("rejects editing another user's deposit", async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const [otherUser] = await db
+        .insert(schema.users)
+        .values({ email: 'other2@example.com', passwordHash: 'x', name: 'Other' })
+        .returning();
+      const [foreignGoal] = await db
+        .insert(schema.savingsGoals)
+        .values({ userId: otherUser!.id, name: 'Not yours', targetAmount: 1000, currentAmount: 500 })
+        .returning();
+      const [foreignDeposit] = await db
+        .insert(schema.savingsDeposits)
+        .values({ goalId: foreignGoal!.id, amount: 500 })
+        .returning();
+
+      const res = await agent
+        .patch(`/api/v1/savings/${foreignGoal!.id}/deposits/${foreignDeposit!.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amount: 999 });
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('GET /:id/milestones', () => {
     it('splits reached (with date) from next (with progress and missing amount)', async () => {
       const { agent, accessToken } = await registerAndGetToken();

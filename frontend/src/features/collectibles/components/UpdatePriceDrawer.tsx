@@ -30,10 +30,12 @@ function HistoryRow({ itemId, snapshot }: { itemId: string; snapshot: Collectibl
   const updateSnapshot = useUpdatePriceSnapshot();
   const deleteSnapshot = useDeletePriceSnapshot();
   const toast = useToast();
-  const { formatCents } = useFormatCurrency();
+  const { formatCents, toDisplayCents, fromDisplayCents } = useFormatCurrency();
 
   function startEdit() {
-    setEditPrice(snapshot.marketPriceEur !== null ? String(snapshot.marketPriceEur / 100) : '');
+    setEditPrice(
+      snapshot.marketPriceEur !== null ? String(toDisplayCents(snapshot.marketPriceEur) / 100) : '',
+    );
     setEditNote(snapshotNote(snapshot.rawData));
     setEditing(true);
   }
@@ -43,7 +45,10 @@ function HistoryRow({ itemId, snapshot }: { itemId: string; snapshot: Collectibl
       {
         id: itemId,
         snapshotId: snapshot.id,
-        input: { priceEur: Math.round(Number(editPrice) * 100), note: editNote || undefined },
+        input: {
+          priceEur: fromDisplayCents(Math.round(Number(editPrice) * 100)),
+          note: editNote || undefined,
+        },
       },
       {
         onSuccess: () => setEditing(false),
@@ -141,12 +146,19 @@ export function UpdatePriceDrawer({
   const { data } = useCollectibleWithHistory(item?.id ?? '');
   const updatePrice = useUpdatePrice();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!item) return;
     updatePrice.mutate(
-      { id: item.id, input: { priceEur: Math.round(Number(priceEur) * 100), note: note || undefined } },
+      {
+        id: item.id,
+        input: {
+          priceEur: fromDisplayCents(Math.round(Number(priceEur) * 100)),
+          note: note || undefined,
+        },
+      },
       {
         onSuccess: () => {
           toast.success('Prix mis à jour');
@@ -165,7 +177,7 @@ export function UpdatePriceDrawer({
     <Drawer open={open} onClose={onClose} title={`Mettre à jour le prix — ${item.name}`}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Prix actuel (€)"
+          label={`Prix actuel (${displayCurrency})`}
           type="number"
           step="0.01"
           value={priceEur}

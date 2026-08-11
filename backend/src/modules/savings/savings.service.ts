@@ -1,8 +1,12 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
 import { AppError } from '../../shared/utils/AppError.js';
-import type { CreateSavingsGoalInput, UpdateSavingsGoalInput } from './savings.schema.js';
+import type {
+  CreateSavingsGoalInput,
+  UpdateDepositInput,
+  UpdateSavingsGoalInput,
+} from './savings.schema.js';
 
 // Milestones aren't enumerated in base.md beyond "vérification automatique des
 // jalons à chaque dépôt" — percentage checkpoints of the target are a
@@ -51,17 +55,9 @@ export class SavingsService {
   }
 
   async deposit(userId: string, id: string, amount: number) {
-    const goal = await this.getById(userId, id);
-    const newAmount = goal.currentAmount + amount;
-
-    const [updated] = await this.db
-      .update(schema.savingsGoals)
-      .set({ currentAmount: newAmount })
-      .where(eq(schema.savingsGoals.id, id))
-      .returning();
-    if (!updated) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to update savings goal');
-
+    await this.getById(userId, id);
     await this.db.insert(schema.savingsDeposits).values({ goalId: id, amount });
+    const updated = await this.recomputeCurrentAmount(id);
 
     const reachedMilestones = await this.checkMilestones(updated);
     return { goal: updated, reachedMilestones };
@@ -74,6 +70,57 @@ export class SavingsService {
       .from(schema.savingsDeposits)
       .where(eq(schema.savingsDeposits.goalId, id))
       .orderBy(asc(schema.savingsDeposits.date));
+  }
+
+  async updateDeposit(userId: string, goalId: string, depositId: string, input: UpdateDepositInput) {
+    await this.getDepositOrThrow(userId, goalId, depositId);
+    const [deposit] = await this.db
+      .update(schema.savingsDeposits)
+      .set({
+        ...(input.amount !== undefined && { amount: input.amount }),
+        ...(input.date !== undefined && { date: new Date(input.date) }),
+      })
+      .where(eq(schema.savingsDeposits.id, depositId))
+      .returning();
+    if (!deposit) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to update savings deposit');
+
+    const updatedGoal = await this.recomputeCurrentAmount(goalId);
+    await this.checkMilestones(updatedGoal);
+    return deposit;
+  }
+
+  async deleteDeposit(userId: string, goalId: string, depositId: string): Promise<void> {
+    await this.getDepositOrThrow(userId, goalId, depositId);
+    await this.db.delete(schema.savingsDeposits).where(eq(schema.savingsDeposits.id, depositId));
+    await this.recomputeCurrentAmount(goalId);
+  }
+
+  private async getDepositOrThrow(userId: string, goalId: string, depositId: string) {
+    await this.getById(userId, goalId);
+    const [deposit] = await this.db
+      .select()
+      .from(schema.savingsDeposits)
+      .where(and(eq(schema.savingsDeposits.id, depositId), eq(schema.savingsDeposits.goalId, goalId)));
+    if (!deposit) throw new AppError(404, 'SAVINGS_DEPOSIT_NOT_FOUND', 'Savings deposit not found');
+    return deposit;
+  }
+
+  // currentAmount always mirrors sum(deposits.amount) for the goal — recomputed from
+  // scratch after every add/edit/delete rather than tracked as a running delta, so it
+  // can never drift (mirrors InvestmentsService.recomputeCurrentValue's approach).
+  private async recomputeCurrentAmount(goalId: string): Promise<SavingsGoal> {
+    const [row] = await this.db
+      .select({ total: sql<number>`coalesce(sum(${schema.savingsDeposits.amount}), 0)::int` })
+      .from(schema.savingsDeposits)
+      .where(eq(schema.savingsDeposits.goalId, goalId));
+
+    const [updated] = await this.db
+      .update(schema.savingsGoals)
+      .set({ currentAmount: row?.total ?? 0 })
+      .where(eq(schema.savingsGoals.id, goalId))
+      .returning();
+    if (!updated) throw new AppError(500, 'INTERNAL_ERROR', 'Failed to update savings goal');
+    return updated;
   }
 
   async getMilestones(userId: string, id: string) {

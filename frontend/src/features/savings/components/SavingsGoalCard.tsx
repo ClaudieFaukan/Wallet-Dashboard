@@ -1,20 +1,26 @@
 import { useState } from 'react';
-import { CheckCircle2, Pencil, PlusCircle } from 'lucide-react';
+import { List, Pencil, PlusCircle } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
-import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { CircularProgress } from '../../../components/charts/CircularProgress';
-import { ProgressBar } from '../../../components/charts/ProgressBar';
+import { MilestoneMarker } from '../../../components/charts/MilestoneMarker';
 import { formatDate } from '../../../lib/format';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { SavingsGoal } from '../../../types/api';
 import { useSavingsDeposits, useSavingsMilestones } from '../hooks/useSavings';
 import { DepositDrawer } from './DepositDrawer';
+import { DepositsModal } from './DepositsModal';
 import { EditGoalDrawer } from './EditGoalDrawer';
+
+// Mirrors backend MILESTONE_PERCENTAGES (savings.service.ts) — the API doesn't
+// enumerate not-yet-reachable milestones separately, so the checkpoints the UI
+// draws chips for have to be listed here too.
+const MILESTONE_PERCENTAGES = [25, 50, 75, 100];
 
 export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
   const [depositOpen, setDepositOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [depositsModalOpen, setDepositsModalOpen] = useState(false);
   const { data: deposits } = useSavingsDeposits(goal.id);
   const { data: milestones } = useSavingsMilestones(goal.id);
   const { formatCents } = useFormatCurrency();
@@ -31,7 +37,7 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
         <Pencil size={14} />
       </button>
       <div className="flex items-center gap-4">
-        <CircularProgress value={pct} label={goal.name} color={goal.color ?? undefined} />
+        <CircularProgress value={pct} color={goal.color ?? undefined} />
         <div className="flex-1">
           <p className="text-sm font-semibold text-text-primary">{goal.name}</p>
           <p className="font-mono text-sm text-text-muted">
@@ -43,30 +49,44 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
         </div>
       </div>
 
-      {milestones && (milestones.reached.length > 0 || milestones.next.length > 0) && (
-        <div className="mt-4 space-y-2 border-t border-border pt-3">
-          <p className="text-xs text-text-muted">Jalons</p>
-          {milestones.reached.map((m) => (
-            <div key={m.id} className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 text-text-primary">
-                <CheckCircle2 size={13} className="text-accent-2" /> {m.name}
-              </span>
-              <Badge variant="success">{m.reachedAt ? formatDate(m.reachedAt) : ''}</Badge>
-            </div>
-          ))}
-          {milestones.next.slice(0, 1).map((m) => (
-            <ProgressBar
-              key={m.percentage}
-              value={m.progress * 100}
-              label={`Prochain : ${m.percentage}% — manque ${formatCents(m.missingAmount)}`}
-            />
-          ))}
+      {milestones && goal.targetAmount > 0 && (
+        <div className="mt-4 border-t border-border pt-3">
+          <p className="mb-2 text-xs text-text-muted">Jalons</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {MILESTONE_PERCENTAGES.map((p) => {
+              const reached = milestones.reached.find((m) => m.name === `${p}%`);
+              const next = milestones.next.find((m) => m.percentage === p);
+              return (
+                <MilestoneMarker
+                  key={p}
+                  label={`${p}%`}
+                  reached={Boolean(reached)}
+                  date={
+                    reached
+                      ? reached.reachedAt
+                        ? formatDate(reached.reachedAt)
+                        : null
+                      : (next && formatCents(next.amount)) ?? null
+                  }
+                />
+              );
+            })}
+          </div>
         </div>
       )}
 
       {deposits && deposits.length > 0 && (
         <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-2 text-xs text-text-muted">Derniers dépôts</p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs text-text-muted">Derniers dépôts</p>
+            <button
+              type="button"
+              onClick={() => setDepositsModalOpen(true)}
+              className="flex items-center gap-1 text-xs text-accent hover:text-accent/80"
+            >
+              <List size={12} /> Tout voir ({deposits.length})
+            </button>
+          </div>
           <ul className="space-y-1">
             {deposits
               .slice(-4)
@@ -83,6 +103,7 @@ export function SavingsGoalCard({ goal }: { goal: SavingsGoal }) {
 
       <DepositDrawer goal={goal} open={depositOpen} onClose={() => setDepositOpen(false)} />
       <EditGoalDrawer goal={editOpen ? goal : null} open={editOpen} onClose={() => setEditOpen(false)} />
+      <DepositsModal goal={goal} open={depositsModalOpen} onClose={() => setDepositsModalOpen(false)} />
     </Card>
   );
 }

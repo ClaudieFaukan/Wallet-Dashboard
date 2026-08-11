@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from '../../shared/middleware/auth.middlewa
 import type {
   CreateSavingsGoalInput,
   DepositInput,
+  UpdateDepositInput,
   UpdateSavingsGoalInput,
 } from './savings.schema.js';
 import type { SavingsService } from './savings.service.js';
@@ -83,6 +84,35 @@ export class SavingsController {
       const { user } = req as AuthenticatedRequest;
       const deposits = await this.savingsService.listDeposits(user.id, req.params.id as string);
       res.json({ success: true, data: deposits });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  updateDeposit: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const deposit = await this.savingsService.updateDeposit(
+        user.id,
+        req.params.id as string,
+        req.params.depositId as string,
+        req.body as UpdateDepositInput,
+      );
+      res.json({ success: true, data: deposit });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  deleteDeposit: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      await this.savingsService.deleteDeposit(
+        user.id,
+        req.params.id as string,
+        req.params.depositId as string,
+      );
+      res.status(204).send();
     } catch (err) {
       next(err);
     }

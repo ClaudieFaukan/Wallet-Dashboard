@@ -4,6 +4,7 @@ import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import type { CollectibleSealedLanguage, CollectibleSealedType } from '../../../types/api';
 
@@ -24,6 +25,7 @@ export function AddSealedDrawer({ open, onClose }: { open: boolean; onClose: () 
   const autoAvailable = Boolean(config?.pokemonPriceTrackerConfigured || config?.poketraceConfigured);
   const create = useCreateCollectible();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,7 +37,7 @@ export function AddSealedDrawer({ open, onClose }: { open: boolean; onClose: () 
         imageUrl: imageUrl || undefined,
         sealedType,
         sealedLanguage,
-        purchasePrice: Math.round(Number(purchasePrice) * 100),
+        purchasePrice: fromDisplayCents(Math.round(Number(purchasePrice) * 100)),
         purchaseDate: new Date(purchaseDate).toISOString(),
         priceSource: autoAvailable ? priceSource : 'manual',
       },
@@ -72,7 +74,7 @@ export function AddSealedDrawer({ open, onClose }: { open: boolean; onClose: () 
         </Select>
         <Input label="URL de l'image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
         <Input
-          label="Prix d'achat (€)"
+          label={`Prix d'achat (${displayCurrency})`}
           type="number"
           step="0.01"
           value={purchasePrice}

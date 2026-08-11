@@ -6,6 +6,7 @@ import { SavingsController } from './savings.controller.js';
 import {
   createSavingsGoalSchema,
   depositSchema,
+  updateDepositSchema,
   updateSavingsGoalSchema,
 } from './savings.schema.js';
 import { SavingsService } from './savings.service.js';
@@ -23,4 +24,10 @@ savingsRouter.patch('/:id', validate(updateSavingsGoalSchema), savingsController
 savingsRouter.delete('/:id', savingsController.delete);
 savingsRouter.post('/:id/deposit', validate(depositSchema), savingsController.deposit);
 savingsRouter.get('/:id/deposits', savingsController.listDeposits);
+savingsRouter.patch(
+  '/:id/deposits/:depositId',
+  validate(updateDepositSchema),
+  savingsController.updateDeposit,
+);
+savingsRouter.delete('/:id/deposits/:depositId', savingsController.deleteDeposit);
 savingsRouter.get('/:id/milestones', savingsController.getMilestones);

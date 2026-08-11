@@ -197,6 +197,11 @@ export interface SavingsDeposit {
   notes: string | null;
 }
 
+export interface UpdateDepositInput {
+  amount?: number;
+  date?: string;
+}
+
 export interface DepositResult {
   goal: SavingsGoal;
   reachedMilestones: SavingsMilestone[];

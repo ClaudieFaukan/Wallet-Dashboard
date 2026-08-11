@@ -17,3 +17,9 @@ export const depositSchema = z.object({
   amount: z.number().int().positive(),
 });
 export type DepositInput = z.infer<typeof depositSchema>;
+
+export const updateDepositSchema = z.object({
+  amount: z.number().int().positive().optional(),
+  date: z.string().optional(),
+});
+export type UpdateDepositInput = z.infer<typeof updateDepositSchema>;

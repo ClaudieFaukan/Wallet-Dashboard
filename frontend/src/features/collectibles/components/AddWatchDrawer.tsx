@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import { useCreateCollectible } from '../hooks/useCollectibles';
 
@@ -18,6 +19,7 @@ export function AddWatchDrawer({ open, onClose }: { open: boolean; onClose: () =
   const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
   const create = useCreateCollectible();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function reset() {
     setName('');
@@ -42,7 +44,7 @@ export function AddWatchDrawer({ open, onClose }: { open: boolean; onClose: () =
         year: year ? Number(year) : undefined,
         watchCondition: watchCondition || undefined,
         imageUrl: imageUrl || undefined,
-        purchasePrice: Math.round(Number(purchasePrice) * 100),
+        purchasePrice: fromDisplayCents(Math.round(Number(purchasePrice) * 100)),
         purchaseDate: new Date(purchaseDate).toISOString(),
       },
       {
@@ -72,7 +74,7 @@ export function AddWatchDrawer({ open, onClose }: { open: boolean; onClose: () =
         />
         <Input label="URL de l'image" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
         <Input
-          label="Prix d'achat (€)"
+          label={`Prix d'achat (${displayCurrency})`}
           type="number"
           step="0.01"
           value={purchasePrice}

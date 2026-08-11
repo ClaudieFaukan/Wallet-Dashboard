@@ -6,6 +6,7 @@ import { Toggle } from '../../../components/ui/Toggle';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import type {
   CardSearchResult,
@@ -58,6 +59,7 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const search = useSearchCard(debouncedQuery, tcgType);
   const create = useCreateCollectible();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function reset() {
     setTcgType('pokemon');
@@ -92,7 +94,7 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
         tcgdexId: selected.tcgdexId || undefined,
         tcgType,
         language: language || undefined,
-        purchasePrice: Math.round(Number(purchasePrice) * 100),
+        purchasePrice: fromDisplayCents(Math.round(Number(purchasePrice) * 100)),
         purchaseDate: new Date(purchaseDate).toISOString(),
         condition: graded ? undefined : condition,
         gradingCompany: graded ? gradingCompany : undefined,
@@ -198,7 +200,7 @@ export function AddCardDrawer({ open, onClose }: { open: boolean; onClose: () =>
           </div>
 
           <Input
-            label="Prix d'achat (€)"
+            label={`Prix d'achat (${displayCurrency})`}
             type="number"
             step="0.01"
             value={purchasePrice}

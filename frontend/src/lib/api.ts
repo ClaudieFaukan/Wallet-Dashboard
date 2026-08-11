@@ -60,6 +60,7 @@ import type {
   TransactionStats,
   UpdateAccountInput,
   UpdateCostEntryInput,
+  UpdateDepositInput,
   UpdateTransactionInput,
   UpdateEntryInput,
   UpdateInvestmentAccountInput,
@@ -235,6 +236,12 @@ export const api = {
       unwrap(client.post<ApiResponse<DepositResult>>(`/savings/${id}/deposit`, { amount })),
     deposits: (id: string) =>
       unwrap(client.get<ApiResponse<SavingsDeposit[]>>(`/savings/${id}/deposits`)),
+    updateDeposit: (id: string, depositId: string, input: UpdateDepositInput) =>
+      unwrap(
+        client.patch<ApiResponse<SavingsDeposit>>(`/savings/${id}/deposits/${depositId}`, input),
+      ),
+    deleteDeposit: (id: string, depositId: string) =>
+      client.delete(`/savings/${id}/deposits/${depositId}`),
     milestones: (id: string) =>
       unwrap(client.get<ApiResponse<SavingsMilestonesView>>(`/savings/${id}/milestones`)),
   },

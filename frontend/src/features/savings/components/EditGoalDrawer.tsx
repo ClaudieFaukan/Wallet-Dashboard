@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { getErrorMessage } from '../../../lib/api';
 import type { SavingsGoal } from '../../../types/api';
-import { useUpdateSavingsGoal } from '../hooks/useSavings';
+import { useDeleteSavingsGoal, useUpdateSavingsGoal } from '../hooks/useSavings';
 
 export function EditGoalDrawer({
   goal,
@@ -31,7 +31,18 @@ function EditGoalForm({ goal, onClose }: { goal: SavingsGoal; onClose: () => voi
   const [icon, setIcon] = useState(goal.icon ?? '');
 
   const update = useUpdateSavingsGoal();
+  const del = useDeleteSavingsGoal();
   const toast = useToast();
+
+  function handleDelete() {
+    del.mutate(goal.id, {
+      onSuccess: () => {
+        toast.success('Objectif supprimé');
+        onClose();
+      },
+      onError: (err) => toast.error(getErrorMessage(err)),
+    });
+  }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -73,6 +84,9 @@ function EditGoalForm({ goal, onClose }: { goal: SavingsGoal; onClose: () => voi
       <Input label="Icône" value={icon} onChange={(e) => setIcon(e.target.value)} placeholder="piggy-bank" />
       <Button type="submit" disabled={update.isPending}>
         {update.isPending ? 'Enregistrement…' : 'Enregistrer'}
+      </Button>
+      <Button type="button" variant="danger" disabled={del.isPending} onClick={handleDelete}>
+        {del.isPending ? 'Suppression…' : 'Supprimer'}
       </Button>
     </form>
   );

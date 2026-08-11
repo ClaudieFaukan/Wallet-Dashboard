@@ -5,6 +5,7 @@ import { Select } from '../../../components/ui/Select';
 import { Toggle } from '../../../components/ui/Toggle';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import type {
   CollectibleCardLanguage,
@@ -55,6 +56,7 @@ export function EditCollectibleDrawer({
 }
 
 function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose: () => void }) {
+  const { displayCurrency, toDisplayCents, fromDisplayCents } = useFormatCurrency();
   const [name, setName] = useState(item.name);
   const [imageUrl, setImageUrl] = useState(item.imageUrl ?? '');
   const [setName_, setSetName] = useState(item.setName ?? '');
@@ -73,7 +75,7 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
   const [reference, setReference] = useState(item.reference ?? '');
   const [year, setYear] = useState(item.year?.toString() ?? '');
   const [watchCondition, setWatchCondition] = useState(item.watchCondition ?? '');
-  const [purchasePrice, setPurchasePrice] = useState((item.purchasePrice / 100).toString());
+  const [purchasePrice, setPurchasePrice] = useState((toDisplayCents(item.purchasePrice) / 100).toString());
   const [purchaseDate, setPurchaseDate] = useState(item.purchaseDate.slice(0, 10));
   const [notes, setNotes] = useState(item.notes ?? '');
 
@@ -113,7 +115,7 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
           reference: item.itemType === 'watch' ? reference || undefined : undefined,
           year: item.itemType === 'watch' && year ? Number(year) : undefined,
           watchCondition: item.itemType === 'watch' ? watchCondition || undefined : undefined,
-          purchasePrice: Math.round(Number(purchasePrice) * 100),
+          purchasePrice: fromDisplayCents(Math.round(Number(purchasePrice) * 100)),
           purchaseDate: new Date(purchaseDate).toISOString(),
           notes: notes || undefined,
         },
@@ -228,7 +230,7 @@ function EditCollectibleForm({ item, onClose }: { item: CollectibleItem; onClose
         )}
 
         <Input
-          label="Prix d'achat (€)"
+          label={`Prix d'achat (${displayCurrency})`}
           type="number"
           step="0.01"
           value={purchasePrice}
