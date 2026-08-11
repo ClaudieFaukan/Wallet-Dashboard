@@ -391,23 +391,18 @@ export function SettingsPage() {
           </p>
         </Card>
 
-        <Card>
-          <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-muted">
-            <Fingerprint size={16} /> Sécurité
-          </h3>
-          {touchIdAvailable ? (
+        {touchIdAvailable && (
+          <Card>
+            <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-text-muted">
+              <Fingerprint size={16} /> Sécurité
+            </h3>
             <Toggle
               checked={touchIdEnabled}
               onChange={setTouchIdEnabled}
               label="Déverrouillage Touch ID au lancement de l'app"
             />
-          ) : (
-            <p className="text-sm text-text-muted">
-              Touch ID n'est pas disponible sur cet appareil (nécessite l'app Electron sur un Mac
-              compatible).
-            </p>
-          )}
-        </Card>
+          </Card>
+        )}
 
         <CategoriesSection />
 
