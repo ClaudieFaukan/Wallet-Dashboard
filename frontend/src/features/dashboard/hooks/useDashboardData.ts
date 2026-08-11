@@ -5,7 +5,7 @@ export function useDashboardData() {
   const accounts = useQuery({ queryKey: ['accounts'], queryFn: api.accounts.list });
   const savingsGoals = useQuery({ queryKey: ['savings'], queryFn: api.savings.list });
   const investments = useQuery({ queryKey: ['investments'], queryFn: api.investments.list });
-  const budget = useQuery({ queryKey: ['budget', 'current'], queryFn: api.budget.current });
+  const budget = useQuery({ queryKey: ['budget', 'current'], queryFn: () => api.budget.current() });
   const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories.list });
   const recentTransactions = useQuery({
     queryKey: ['transactions', { limit: 5 }],

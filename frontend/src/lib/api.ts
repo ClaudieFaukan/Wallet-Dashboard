@@ -204,13 +204,15 @@ export const api = {
   },
 
   budget: {
-    current: () => unwrap(client.get<ApiResponse<BudgetCurrentView>>('/budget/current')),
+    current: (month?: string) =>
+      unwrap(client.get<ApiResponse<BudgetCurrentView>>('/budget/current', { params: { month } })),
     yearly: (year: number) =>
       unwrap(client.get<ApiResponse<BudgetYearlyMonth[]>>(`/budget/${year}`)),
-    addLine: (input: { categoryId: string; plannedAmount: number }) =>
+    addLine: (input: { categoryId: string; plannedAmount: number; month?: string }) =>
       unwrap(client.post<ApiResponse<unknown>>('/budget/lines', input)),
     updateLine: (id: string, plannedAmount: number) =>
       unwrap(client.patch<ApiResponse<unknown>>(`/budget/lines/${id}`, { plannedAmount })),
+    deleteLine: (id: string) => client.delete(`/budget/lines/${id}`),
   },
 
   savings: {

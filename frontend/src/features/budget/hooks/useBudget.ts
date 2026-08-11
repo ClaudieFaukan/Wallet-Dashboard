@@ -1,8 +1,12 @@
 import { useQueries, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
 
-export function useBudgetCurrent() {
-  return useQuery({ queryKey: ['budget', 'current'], queryFn: api.budget.current });
+/** @param month 'YYYY-MM', defaults to the current calendar month server-side when omitted. */
+export function useBudgetCurrent(month?: string) {
+  return useQuery({
+    queryKey: ['budget', 'current', month ?? null],
+    queryFn: () => api.budget.current(month),
+  });
 }
 
 export function useBudgetYearly(year: number) {
@@ -12,7 +16,8 @@ export function useBudgetYearly(year: number) {
 export function useAddBudgetLine() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { categoryId: string; plannedAmount: number }) => api.budget.addLine(input),
+    mutationFn: (input: { categoryId: string; plannedAmount: number; month?: string }) =>
+      api.budget.addLine(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['budget'] }),
   });
 }
@@ -22,6 +27,14 @@ export function useUpdateBudgetLine() {
   return useMutation({
     mutationFn: ({ id, plannedAmount }: { id: string; plannedAmount: number }) =>
       api.budget.updateLine(id, plannedAmount),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['budget'] }),
+  });
+}
+
+export function useDeleteBudgetLine() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.budget.deleteLine(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['budget'] }),
   });
 }

@@ -10,6 +10,13 @@ function toMonthDate(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-01`;
 }
 
+/** Accepts 'YYYY-MM' (query/body param from the client) and normalizes to the
+ * 'YYYY-MM-01' shape the `budget_periods.month` column stores. */
+function normalizeMonth(month: string | undefined): string {
+  if (!month) return toMonthDate(new Date());
+  return `${month}-01`;
+}
+
 /** [start, end) UTC bounds for the calendar month a `month` column value falls in. */
 function monthBounds(monthDate: string): [Date, Date] {
   const start = new Date(`${monthDate}T00:00:00.000Z`);
@@ -20,9 +27,8 @@ function monthBounds(monthDate: string): [Date, Date] {
 export class BudgetService {
   constructor(private readonly db: NodePgDatabase<typeof schema>) {}
 
-  async getCurrent(userId: string) {
-    const monthDate = toMonthDate(new Date());
-    const period = await this.getOrCreatePeriod(userId, monthDate);
+  async getCurrent(userId: string, month?: string) {
+    const period = await this.getOrCreatePeriod(userId, normalizeMonth(month));
     return this.buildBudgetView(userId, period);
   }
 
@@ -44,16 +50,19 @@ export class BudgetService {
         ),
       );
 
+    /** Same sign fix as `buildBudgetView`: only expense transactions, negated to a
+     * positive "spent" figure so it's directly comparable to `totalPlanned`. */
     const actuals = await this.db
       .select({
         month: sql<string>`to_char(${schema.transactions.date}, 'YYYY-MM')`,
-        total: sql<number>`sum(${schema.transactions.amount})::int`,
+        total: sql<number>`sum(-${schema.transactions.amount})::int`,
       })
       .from(schema.transactions)
       .innerJoin(schema.accounts, eq(schema.transactions.accountId, schema.accounts.id))
       .where(
         and(
           eq(schema.accounts.userId, userId),
+          eq(schema.transactions.type, 'expense'),
           gte(schema.transactions.date, new Date(`${yearStart}T00:00:00.000Z`)),
           lt(schema.transactions.date, new Date(`${yearEnd}T00:00:00.000Z`)),
         ),
@@ -72,8 +81,7 @@ export class BudgetService {
   }
 
   async addLine(userId: string, input: CreateBudgetLineInput) {
-    const monthDate = toMonthDate(new Date());
-    const period = await this.getOrCreatePeriod(userId, monthDate);
+    const period = await this.getOrCreatePeriod(userId, normalizeMonth(input.month));
 
     const [category] = await this.db
       .select({ id: schema.categories.id })
@@ -95,6 +103,27 @@ export class BudgetService {
   }
 
   async updateLine(userId: string, lineId: string, input: UpdateBudgetLineInput) {
+    const periodId = await this.getLineOwnerPeriodId(userId, lineId);
+
+    const [updated] = await this.db
+      .update(schema.budgetLines)
+      .set({ plannedAmount: input.plannedAmount })
+      .where(eq(schema.budgetLines.id, lineId))
+      .returning();
+
+    await this.recomputeTotalPlanned(periodId);
+    return updated;
+  }
+
+  async deleteLine(userId: string, lineId: string): Promise<void> {
+    const periodId = await this.getLineOwnerPeriodId(userId, lineId);
+
+    await this.db.delete(schema.budgetLines).where(eq(schema.budgetLines.id, lineId));
+
+    await this.recomputeTotalPlanned(periodId);
+  }
+
+  private async getLineOwnerPeriodId(userId: string, lineId: string): Promise<string> {
     const [row] = await this.db
       .select({ periodId: schema.budgetPeriods.id })
       .from(schema.budgetLines)
@@ -104,15 +133,7 @@ export class BudgetService {
       )
       .where(and(eq(schema.budgetLines.id, lineId), eq(schema.budgetPeriods.userId, userId)));
     if (!row) throw new AppError(404, 'BUDGET_LINE_NOT_FOUND', 'Budget line not found');
-
-    const [updated] = await this.db
-      .update(schema.budgetLines)
-      .set({ plannedAmount: input.plannedAmount })
-      .where(eq(schema.budgetLines.id, lineId))
-      .returning();
-
-    await this.recomputeTotalPlanned(row.periodId);
-    return updated;
+    return row.periodId;
   }
 
   private async getOrCreatePeriod(userId: string, monthDate: string): Promise<BudgetPeriod> {
@@ -167,16 +188,20 @@ export class BudgetService {
   private async buildBudgetView(userId: string, period: BudgetPeriod) {
     const [monthStart, monthEnd] = monthBounds(period.month);
 
+    /** Expense transactions are stored with a negative `amount` — negate so
+     * `actualAmount` is a positive "spent so far" figure, directly comparable
+     * to `plannedAmount` (both hero totals and per-line progress bars rely on this). */
     const actuals = await this.db
       .select({
         categoryId: schema.transactions.categoryId,
-        total: sql<number>`sum(${schema.transactions.amount})::int`,
+        total: sql<number>`sum(-${schema.transactions.amount})::int`,
       })
       .from(schema.transactions)
       .innerJoin(schema.accounts, eq(schema.transactions.accountId, schema.accounts.id))
       .where(
         and(
           eq(schema.accounts.userId, userId),
+          eq(schema.transactions.type, 'expense'),
           gte(schema.transactions.date, monthStart),
           lt(schema.transactions.date, monthEnd),
         ),
@@ -184,6 +209,26 @@ export class BudgetService {
       .groupBy(schema.transactions.categoryId);
 
     const actualByCategory = new Map(actuals.map((a) => [a.categoryId, a.total]));
+
+    /** Per-day expense totals for the "cumulative spend vs budget" chart —
+     * only non-zero days are returned, the client fills the gaps. */
+    const dailyRows = await this.db
+      .select({
+        day: sql<number>`extract(day from ${schema.transactions.date})::int`,
+        total: sql<number>`sum(-${schema.transactions.amount})::int`,
+      })
+      .from(schema.transactions)
+      .innerJoin(schema.accounts, eq(schema.transactions.accountId, schema.accounts.id))
+      .where(
+        and(
+          eq(schema.accounts.userId, userId),
+          eq(schema.transactions.type, 'expense'),
+          gte(schema.transactions.date, monthStart),
+          lt(schema.transactions.date, monthEnd),
+        ),
+      )
+      .groupBy(sql`extract(day from ${schema.transactions.date})`);
+    const dailySpend = dailyRows.map((r) => ({ day: r.day, amount: r.total }));
 
     const lines = await this.db
       .select({ line: schema.budgetLines, category: schema.categories })
@@ -208,6 +253,7 @@ export class BudgetService {
       totalPlanned: period.totalPlanned,
       totalActual,
       lines: lineViews,
+      dailySpend,
     };
   }
 

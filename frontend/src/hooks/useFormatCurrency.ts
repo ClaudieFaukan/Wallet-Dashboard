@@ -25,5 +25,15 @@ export function useFormatCurrency() {
       formatCents(convert(cents, sourceCurrency), displayCurrency),
     formatCompactCents: (cents: number, sourceCurrency = 'EUR') =>
       formatCompactCents(convert(cents, sourceCurrency), displayCurrency),
+    /** EUR cents (storage) → display-currency cents, for editable amount inputs
+     * that need to show/collect a number in whatever currency is on screen. */
+    toDisplayCents: (eurCents: number) => convert(eurCents, 'EUR'),
+    /** Display-currency cents → EUR cents (storage), the inverse of `toDisplayCents`. */
+    fromDisplayCents: (displayCents: number) => {
+      if (displayCurrency === 'EUR') return displayCents;
+      const rate = rates?.rates[displayCurrency];
+      if (!rate) return displayCents;
+      return Math.round(displayCents / rate);
+    },
   };
 }

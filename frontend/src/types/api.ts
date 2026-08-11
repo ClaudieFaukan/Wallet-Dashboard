@@ -139,6 +139,7 @@ export interface BudgetCurrentView {
   totalPlanned: number;
   totalActual: number;
   lines: BudgetLineView[];
+  dailySpend: { day: number; amount: number }[];
 }
 
 export interface BudgetYearlyMonth {
