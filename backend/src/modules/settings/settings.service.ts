@@ -3,12 +3,13 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '../../db/schema/index.js';
 import { decrypt, encrypt } from '../../shared/utils/encryption.js';
 import { getEthBalanceWei } from '../../integrations/etherscan/etherscan.client.js';
-import { getAccountSummary } from '../../integrations/cryptocom/cryptocom.client.js';
+import { getUserBalance } from '../../integrations/cryptocom/cryptocom.client.js';
 import { search as searchPokemonPriceTracker } from '../../integrations/collectibles/pokemonpricetracker.provider.js';
 import { search as searchPoketrace } from '../../integrations/collectibles/poketrace.provider.js';
 import { getQuote } from '../../integrations/alphavantage/alphavantage.client.js';
 import { getAccountBalances } from '../../integrations/binance/binance.client.js';
 import { getWalletBalanceUsd } from '../../integrations/bybit/bybit.client.js';
+import { getWallets as getMeriaWallets } from '../../integrations/meria/meria.client.js';
 import { SETTINGS_FIELDS, type SettingsField } from './settings.constants.js';
 import type { TestSettingInput, UpdateSettingsInput } from './settings.schema.js';
 
@@ -49,6 +50,7 @@ export class SettingsService {
       alphaVantageConfigured: has('alphaVantageApiKey'),
       binanceConfigured: has('binanceApiKey') && has('binanceApiSecret'),
       bybitConfigured: has('bybitApiKey') && has('bybitApiSecret'),
+      meriaConfigured: has('meriaApiKey'),
     };
   }
 
@@ -83,8 +85,11 @@ export class SettingsService {
           return { success: true, message: 'Clé Etherscan valide.' };
         }
         case 'cryptoCom': {
-          await getAccountSummary(input.cryptoComApiKey, input.cryptoComApiSecret);
-          return { success: true, message: 'Connexion Crypto.com réussie.' };
+          const balance = await getUserBalance(input.cryptoComApiKey, input.cryptoComApiSecret);
+          return {
+            success: true,
+            message: `Connexion Crypto.com réussie (solde ${balance.total_cash_balance} ${balance.instrument_name}).`,
+          };
         }
         case 'pokemonPriceTracker': {
           const result = await searchPokemonPriceTracker(
@@ -137,6 +142,13 @@ export class SettingsService {
           return {
             success: true,
             message: `Connexion Bybit réussie (${balances.length} actif${balances.length > 1 ? 's' : ''}).`,
+          };
+        }
+        case 'meria': {
+          const wallets = await getMeriaWallets(input.meriaApiKey);
+          return {
+            success: true,
+            message: `Connexion Meria réussie (${wallets.length} actif${wallets.length > 1 ? 's' : ''}).`,
           };
         }
       }

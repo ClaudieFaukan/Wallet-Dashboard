@@ -22,11 +22,13 @@ import type {
   CreateInvestmentAccountInput,
   CreateInvestmentGoalInput,
   CreateSavingsGoalInput,
+  CreateCostEntryInput,
   CreateTransactionInput,
   CreateWalletInput,
   Credit,
   CreditPayment,
   CreditSimulation,
+  CryptoCostEntry,
   CryptoSnapshot,
   CryptoWallet,
   CsvImportResult,
@@ -56,6 +58,7 @@ import type {
   Transaction,
   TransactionStats,
   UpdateAccountInput,
+  UpdateCostEntryInput,
   UpdateTransactionInput,
   UpdateEntryInput,
   UpdateInvestmentAccountInput,
@@ -286,6 +289,19 @@ export const api = {
       unwrap(client.get<ApiResponse<CryptoSnapshot[]>>(`/crypto/wallets/${id}/history`)),
     tokens: (id: string) =>
       unwrap(client.get<ApiResponse<WalletTokensResponse>>(`/crypto/wallets/${id}/tokens`)),
+    listCostEntries: (id: string) =>
+      unwrap(client.get<ApiResponse<CryptoCostEntry[]>>(`/crypto/wallets/${id}/cost-entries`)),
+    addCostEntry: (id: string, input: CreateCostEntryInput) =>
+      unwrap(client.post<ApiResponse<CryptoCostEntry>>(`/crypto/wallets/${id}/cost-entries`, input)),
+    updateCostEntry: (id: string, entryId: string, input: UpdateCostEntryInput) =>
+      unwrap(
+        client.patch<ApiResponse<CryptoCostEntry>>(
+          `/crypto/wallets/${id}/cost-entries/${entryId}`,
+          input,
+        ),
+      ),
+    deleteCostEntry: (id: string, entryId: string) =>
+      client.delete(`/crypto/wallets/${id}/cost-entries/${entryId}`),
   },
 
   collectibles: {

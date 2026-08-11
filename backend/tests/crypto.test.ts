@@ -191,6 +191,54 @@ describe('crypto module', () => {
       expect(res.body.error.code).toBe('CRYPTO_COM_NOT_CONFIGURED');
     });
 
+    it('syncs a Crypto.com wallet via private/user-balance once its API keys are configured', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ cryptoComApiKey: 'key', cryptoComApiSecret: 'secret' });
+
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Crypto.com', platform: 'crypto_com', address: 'main', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string | URL) => {
+          const urlStr = String(url);
+          if (urlStr.includes('private/user-balance')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  code: 0,
+                  result: {
+                    data: [
+                      {
+                        instrument_name: 'USD',
+                        total_cash_balance: '150.5',
+                        total_available_balance: '150.5',
+                        position_balances: [],
+                      },
+                    ],
+                  },
+                }),
+            });
+          }
+          return Promise.reject(new Error(`unexpected URL ${urlStr}`));
+        }),
+      );
+
+      const res = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.totalValueUsd).toBe(15050);
+    });
+
     it('returns 501 for Coinbase and Kraken wallets since they are not implemented', async () => {
       const { agent, accessToken } = await registerAndGetToken();
       for (const platform of ['coinbase', 'kraken'] as const) {
@@ -297,6 +345,167 @@ describe('crypto module', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.totalValueUsd).toBe(605_000);
+    });
+
+    it('syncs a Meria wallet once its API key is configured, pricing via CoinGecko', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ meriaApiKey: 'key' });
+
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Meria', platform: 'meria', address: 'main', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string | URL) => {
+          const urlStr = String(url);
+          if (urlStr.includes('api.meria.com/v1/wallets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({ success: true, data: [{ currencyCode: 'BTC', balance: 0.1 }] }),
+            });
+          }
+          if (urlStr.includes('coingecko.com/api/v3/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve([{ id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' }]),
+            });
+          }
+          if (urlStr.includes('coingecko.com/api/v3/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  {
+                    id: 'bitcoin',
+                    symbol: 'btc',
+                    name: 'Bitcoin',
+                    image: 'https://coingecko.com/bitcoin.png',
+                    current_price: 50000,
+                    price_change_percentage_24h: 2.5,
+                  },
+                ]),
+            });
+          }
+          return Promise.reject(new Error(`unexpected URL ${urlStr}`));
+        }),
+      );
+
+      const res = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      // 0.1 BTC * $50000 = $5000 = 500,000 cents
+      expect(res.body.data.totalValueUsd).toBe(500_000);
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.tokens).toHaveLength(1);
+      expect(tokensRes.body.data.tokens[0]).toMatchObject({
+        symbol: 'BTC',
+        name: 'Bitcoin',
+        logoUrl: 'https://coingecko.com/bitcoin.png',
+        change24hPct: 2.5,
+      });
+    });
+
+    it('returns 501 for a Meria wallet since it is not configured', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Meria', platform: 'meria', address: 'account-1', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      const res = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(501);
+      expect(res.body.error.code).toBe('MERIA_NOT_CONFIGURED');
+    });
+  });
+
+  describe('cost entries (P&L tracking)', () => {
+    async function createWallet(agent: ReturnType<typeof request.agent>, accessToken: string) {
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      return createRes.body.data.id as string;
+    }
+
+    it('creates, lists, updates and deletes a cost entry', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const walletId = await createWallet(agent, accessToken);
+
+      const createRes = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/cost-entries`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ symbol: 'SOL', amountInvestedCents: 10000, purchasedAt: '2025-01-01T00:00:00Z' });
+      expect(createRes.status).toBe(201);
+      expect(createRes.body.data.symbol).toBe('SOL');
+      const entryId = createRes.body.data.id as string;
+
+      const listRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/cost-entries`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.data).toHaveLength(1);
+
+      const patchRes = await agent
+        .patch(`/api/v1/crypto/wallets/${walletId}/cost-entries/${entryId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amountInvestedCents: 15000 });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.data.amountInvestedCents).toBe(15000);
+
+      const deleteRes = await agent
+        .delete(`/api/v1/crypto/wallets/${walletId}/cost-entries/${entryId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(deleteRes.status).toBe(204);
+
+      const afterDelete = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/cost-entries`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(afterDelete.body.data).toHaveLength(0);
+    });
+
+    it("rejects update/delete of another user's cost entry", async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+
+      const [otherUser] = await db
+        .insert(schema.users)
+        .values({ email: 'other-cost@example.com', passwordHash: 'x', name: 'Other' })
+        .returning();
+      const [foreignWallet] = await db
+        .insert(schema.cryptoWallets)
+        .values({ userId: otherUser!.id, name: 'Not yours', platform: 'phantom', address: 'x', chain: 'solana' })
+        .returning();
+      const [foreignEntry] = await db
+        .insert(schema.cryptoCostEntries)
+        .values({ walletId: foreignWallet!.id, symbol: 'SOL', amountInvestedCents: 10000 })
+        .returning();
+
+      const patchRes = await agent
+        .patch(`/api/v1/crypto/wallets/${foreignWallet!.id}/cost-entries/${foreignEntry!.id}`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ amountInvestedCents: 1 });
+      expect(patchRes.status).toBe(404);
+
+      const deleteRes = await agent
+        .delete(`/api/v1/crypto/wallets/${foreignWallet!.id}/cost-entries/${foreignEntry!.id}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(deleteRes.status).toBe(404);
     });
   });
 });

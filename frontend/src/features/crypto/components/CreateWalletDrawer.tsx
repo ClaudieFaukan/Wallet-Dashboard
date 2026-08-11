@@ -16,6 +16,7 @@ const PLATFORM_LABELS: Record<CryptoPlatform, string> = {
   bybit: 'Bybit',
   coinbase: 'Coinbase',
   kraken: 'Kraken',
+  meria: 'Meria',
 };
 
 // On-chain wallets are identified by a real public address; exchange platforms authenticate via
@@ -30,6 +31,7 @@ const PLATFORM_CHAIN: Record<CryptoPlatform, CryptoChain> = {
   bybit: 'ethereum',
   coinbase: 'ethereum',
   kraken: 'ethereum',
+  meria: 'ethereum',
 };
 
 export function CreateWalletDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {

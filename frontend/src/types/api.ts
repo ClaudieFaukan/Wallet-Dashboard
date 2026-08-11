@@ -445,7 +445,8 @@ export type CryptoPlatform =
   | 'binance'
   | 'bybit'
   | 'coinbase'
-  | 'kraken';
+  | 'kraken'
+  | 'meria';
 export type CryptoChain = 'ethereum' | 'solana';
 
 export interface CryptoWallet {
@@ -480,6 +481,7 @@ export interface CryptoSnapshot {
 export interface WalletToken {
   symbol: string;
   name: string | null;
+  logoUrl: string | null;
   amount: number;
   priceUsd: number | null;
   valueUsdCents: number | null;
@@ -490,6 +492,26 @@ export interface WalletTokensResponse {
   tokens: WalletToken[];
   note: string | null;
 }
+
+export interface CryptoCostEntry {
+  id: string;
+  walletId: string;
+  symbol: string;
+  amountInvestedCents: number;
+  purchasedAt: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCostEntryInput {
+  symbol: string;
+  amountInvestedCents: number;
+  purchasedAt: string;
+  notes?: string;
+}
+
+export type UpdateCostEntryInput = Partial<CreateCostEntryInput>;
 
 export type CollectibleItemType = 'card' | 'sealed' | 'watch';
 export type CollectibleCondition = 'NM' | 'LP' | 'MP' | 'HP' | 'DMG';
@@ -665,6 +687,7 @@ export interface SettingsStatus {
   alphaVantageConfigured: boolean;
   binanceConfigured: boolean;
   bybitConfigured: boolean;
+  meriaConfigured: boolean;
 }
 
 export interface UpdateSettingsInput {
@@ -680,6 +703,7 @@ export interface UpdateSettingsInput {
   binanceApiSecret?: string;
   bybitApiKey?: string;
   bybitApiSecret?: string;
+  meriaApiKey?: string;
 }
 
 export type TestSettingInput =
@@ -690,7 +714,8 @@ export type TestSettingInput =
   | { section: 'revolut'; revolutClientId: string; revolutClientSecret: string }
   | { section: 'alphaVantage'; alphaVantageApiKey: string }
   | { section: 'binance'; binanceApiKey: string; binanceApiSecret: string }
-  | { section: 'bybit'; bybitApiKey: string; bybitApiSecret: string };
+  | { section: 'bybit'; bybitApiKey: string; bybitApiSecret: string }
+  | { section: 'meria'; meriaApiKey: string };
 
 export interface TestSettingResult {
   success: boolean;

@@ -25,6 +25,7 @@ const cryptoPlatformLabels: Record<CryptoWallet['platform'], string> = {
   bybit: 'Bybit',
   coinbase: 'Coinbase',
   kraken: 'Kraken',
+  meria: 'Meria',
 };
 
 export interface PatrimoineRow {

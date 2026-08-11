@@ -113,7 +113,8 @@ type FieldName =
   | 'binanceApiKey'
   | 'binanceApiSecret'
   | 'bybitApiKey'
-  | 'bybitApiSecret';
+  | 'bybitApiSecret'
+  | 'meriaApiKey';
 
 interface IntegrationGroupProps {
   title: string;
@@ -315,6 +316,16 @@ function IntegrationsSection() {
           onTest={(v) => handleTest('bybit', v)}
           testing={testSetting.isPending}
           testResult={testResults.bybit}
+        />
+        <IntegrationGroup
+          title="Meria"
+          configured={Boolean(status?.meriaConfigured)}
+          fields={[{ name: 'meriaApiKey', label: 'Clé API' }]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('meria', v)}
+          testing={testSetting.isPending}
+          testResult={testResults.meria}
         />
       </div>
     </Card>

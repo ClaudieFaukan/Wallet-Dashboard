@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { pieColors } from '../charts/chartTheme';
 
 function hashString(value: string): number {
@@ -18,12 +19,27 @@ function initials(name: string): string {
 interface AvatarProps {
   name: string;
   size?: number;
+  src?: string | null;
 }
 
 /** Deterministic colored initials avatar, used wherever an institution/asset
- * has no logo (Finary-style account rows). */
-export function Avatar({ name, size = 32 }: AvatarProps) {
+ * has no logo (Finary-style account rows). Pass `src` for a real logo (e.g.
+ * a CoinGecko token icon) — falls back to initials if it fails to load. */
+export function Avatar({ name, size = 32, src }: AvatarProps) {
+  const [imageFailed, setImageFailed] = useState(false);
   const color = pieColors[hashString(name) % pieColors.length];
+
+  if (src && !imageFailed) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: size, height: size }}
+        onError={() => setImageFailed(true)}
+      />
+    );
+  }
 
   return (
     <div

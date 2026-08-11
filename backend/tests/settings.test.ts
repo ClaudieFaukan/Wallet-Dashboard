@@ -39,6 +39,7 @@ describe('settings module', () => {
       alphaVantageConfigured: false,
       binanceConfigured: false,
       bybitConfigured: false,
+      meriaConfigured: false,
     });
   });
 
@@ -203,6 +204,27 @@ describe('settings module', () => {
         .post('/api/v1/settings/test')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ section: 'bybit', bybitApiKey: 'key', bybitApiSecret: 'secret' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.success).toBe(true);
+    });
+
+    it('reports success for a valid Meria key', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true, data: [{ currencyCode: 'BTC', balance: 0.1 }] }),
+          }),
+        ),
+      );
+
+      const res = await agent
+        .post('/api/v1/settings/test')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ section: 'meria', meriaApiKey: 'key' });
 
       expect(res.status).toBe(200);
       expect(res.body.data.success).toBe(true);

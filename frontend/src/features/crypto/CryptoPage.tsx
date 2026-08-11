@@ -8,6 +8,7 @@ import { Variation } from '../../components/ui/Variation';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { usePatrimoineRows } from '../../hooks/usePatrimoineRows';
 import { CreateWalletDrawer } from './components/CreateWalletDrawer';
+import { TopCryptosCarousel } from './components/TopCryptosCarousel';
 import { WalletCard } from './components/WalletCard';
 import { useCryptoWallets } from './hooks/useCrypto';
 
@@ -60,8 +61,10 @@ export function CryptoPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
-          {isLoading && [1, 2].map((i) => <Skeleton key={i} className="h-48" />)}
+        {wallets && wallets.length > 0 && <TopCryptosCarousel wallets={wallets} />}
+
+        <div className="grid grid-cols-3 gap-4">
+          {isLoading && [1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}
           {wallets?.length === 0 && <p className="text-sm text-text-muted">Aucun wallet pour l'instant.</p>}
           {wallets?.map((wallet) => (
             <WalletCard key={wallet.id} wallet={wallet} ytdVariationPct={rowsById.get(wallet.id)?.ytdVariationPct ?? null} />

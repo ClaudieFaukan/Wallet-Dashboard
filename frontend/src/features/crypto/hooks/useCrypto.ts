@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
-import type { CreateWalletInput, UpdateWalletInput } from '../../../types/api';
+import type {
+  CreateCostEntryInput,
+  CreateWalletInput,
+  UpdateCostEntryInput,
+  UpdateWalletInput,
+} from '../../../types/api';
 
 export const cryptoKey = ['crypto', 'wallets'];
 
@@ -44,5 +49,40 @@ export function useSyncWallet() {
       queryClient.invalidateQueries({ queryKey: cryptoKey });
       queryClient.invalidateQueries({ queryKey: [...cryptoKey, id, 'history'] });
     },
+  });
+}
+
+export function useCostEntries(walletId: string) {
+  return useQuery({
+    queryKey: [...cryptoKey, walletId, 'cost-entries'],
+    queryFn: () => api.crypto.listCostEntries(walletId),
+  });
+}
+
+export function useAddCostEntry(walletId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateCostEntryInput) => api.crypto.addCostEntry(walletId, input),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [...cryptoKey, walletId, 'cost-entries'] }),
+  });
+}
+
+export function useUpdateCostEntry(walletId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, input }: { entryId: string; input: UpdateCostEntryInput }) =>
+      api.crypto.updateCostEntry(walletId, entryId, input),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [...cryptoKey, walletId, 'cost-entries'] }),
+  });
+}
+
+export function useDeleteCostEntry(walletId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (entryId: string) => api.crypto.deleteCostEntry(walletId, entryId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: [...cryptoKey, walletId, 'cost-entries'] }),
   });
 }

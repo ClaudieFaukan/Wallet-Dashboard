@@ -19,6 +19,7 @@ export const cryptoPlatformEnum = pgEnum('crypto_platform', [
   'bybit',
   'coinbase',
   'kraken',
+  'meria',
 ]);
 export const cryptoChainEnum = pgEnum('crypto_chain', ['ethereum', 'solana']);
 
@@ -43,5 +44,20 @@ export const cryptoSnapshots = pgTable('crypto_snapshots', {
   fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
   totalValueUsd: integer('total_value_usd').notNull(),
   rawData: jsonb('raw_data'),
+  ...timestamps,
+});
+
+// Manual "how much did I actually pay for this" journal, per wallet+token symbol — same
+// role as investment_entries' DCA journal, but crypto wallets only ever store synced
+// balances, never a purchase history, so this is the only source of cost basis for P&L.
+export const cryptoCostEntries = pgTable('crypto_cost_entries', {
+  id: id(),
+  walletId: uuid('wallet_id')
+    .notNull()
+    .references(() => cryptoWallets.id, { onDelete: 'cascade' }),
+  symbol: text('symbol').notNull(),
+  amountInvestedCents: integer('amount_invested_cents').notNull(),
+  purchasedAt: timestamp('purchased_at', { withTimezone: true }).notNull().defaultNow(),
+  notes: text('notes'),
   ...timestamps,
 });

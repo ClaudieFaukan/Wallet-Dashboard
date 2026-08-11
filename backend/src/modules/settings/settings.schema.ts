@@ -13,6 +13,7 @@ export const updateSettingsSchema = z.object({
   binanceApiSecret: z.string().optional(),
   bybitApiKey: z.string().optional(),
   bybitApiSecret: z.string().optional(),
+  meriaApiKey: z.string().optional(),
 });
 export type UpdateSettingsInput = z.infer<typeof updateSettingsSchema>;
 
@@ -44,5 +45,6 @@ export const testSettingSchema = z.discriminatedUnion('section', [
     bybitApiKey: z.string().min(1),
     bybitApiSecret: z.string().min(1),
   }),
+  z.object({ section: z.literal('meria'), meriaApiKey: z.string().min(1) }),
 ]);
 export type TestSettingInput = z.infer<typeof testSettingSchema>;
