@@ -3,6 +3,7 @@ import { Select } from '../../../components/ui/Select';
 import type { InvestmentAssetType, InvestmentEntryType } from '../../../types/api';
 
 interface EntryFormFieldsProps {
+  displayCurrency: string;
   date: string;
   onDateChange: (v: string) => void;
   amountInvested: string;
@@ -25,6 +26,7 @@ interface EntryFormFieldsProps {
  * avoid duplicating the JSX (state/handlers stay owned by each drawer — key-remount pattern for
  * the edit case, matching the convention already used elsewhere in this app). */
 export function EntryFormFields({
+  displayCurrency,
   date,
   onDateChange,
   amountInvested,
@@ -54,7 +56,11 @@ export function EntryFormFields({
         <option value="dividend">Dividende reçu</option>
       </Select>
       <Input
-        label={entryType === 'dividend' ? 'Montant du dividende (€)' : 'Montant versé (€)'}
+        label={
+          entryType === 'dividend'
+            ? `Montant du dividende (${displayCurrency})`
+            : `Montant versé (${displayCurrency})`
+        }
         type="number"
         step="0.01"
         value={amountInvested}
@@ -66,7 +72,7 @@ export function EntryFormFields({
         </p>
       )}
       <Input
-        label="Valeur du portefeuille après versement (€)"
+        label={`Valeur du portefeuille après versement (${displayCurrency})`}
         type="number"
         step="0.01"
         value={portfolioValue}

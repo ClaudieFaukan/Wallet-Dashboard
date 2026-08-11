@@ -29,7 +29,7 @@ export function AddEntryDrawer({
   const addEntry = useAddEntry();
   const toast = useToast();
   const celebrate = useMilestoneCelebration();
-  const { formatCents } = useFormatCurrency();
+  const { displayCurrency, formatCents, fromDisplayCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -38,8 +38,8 @@ export function AddEntryDrawer({
         id: accountId,
         input: {
           date: new Date(date).toISOString(),
-          amountInvested: Math.round(Number(amountInvested) * 100),
-          portfolioValue: Math.round(Number(portfolioValue) * 100),
+          amountInvested: fromDisplayCents(Math.round(Number(amountInvested) * 100)),
+          portfolioValue: fromDisplayCents(Math.round(Number(portfolioValue) * 100)),
           entryType,
           ticker: ticker || undefined,
           assetType: ticker ? assetType : undefined,
@@ -65,6 +65,7 @@ export function AddEntryDrawer({
     <Drawer open={open} onClose={onClose} title="Ajouter une entrée DCA">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <EntryFormFields
+          displayCurrency={displayCurrency}
           date={date}
           onDateChange={setDate}
           amountInvested={amountInvested}

@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import type { InvestmentAccount } from '../../../types/api';
 import { useUpdateInvestmentAccount } from '../hooks/useInvestments';
@@ -24,9 +25,10 @@ export function EditInvestmentAccountDrawer({
 }
 
 function EditAccountForm({ account, onClose }: { account: InvestmentAccount; onClose: () => void }) {
+  const { displayCurrency, toDisplayCents, fromDisplayCents } = useFormatCurrency();
   const [name, setName] = useState(account.name);
   const [platform, setPlatform] = useState(account.platform ?? '');
-  const [currentValue, setCurrentValue] = useState((account.currentValue / 100).toString());
+  const [currentValue, setCurrentValue] = useState((toDisplayCents(account.currentValue) / 100).toString());
 
   const update = useUpdateInvestmentAccount();
   const toast = useToast();
@@ -39,7 +41,7 @@ function EditAccountForm({ account, onClose }: { account: InvestmentAccount; onC
         input: {
           name,
           platform: platform || undefined,
-          currentValue: Math.round(Number(currentValue) * 100),
+          currentValue: fromDisplayCents(Math.round(Number(currentValue) * 100)),
         },
       },
       {
@@ -57,7 +59,7 @@ function EditAccountForm({ account, onClose }: { account: InvestmentAccount; onC
       <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
       <Input label="Plateforme" value={platform} onChange={(e) => setPlatform(e.target.value)} />
       <Input
-        label="Valeur actuelle (€)"
+        label={`Valeur actuelle (${displayCurrency})`}
         type="number"
         step="0.01"
         value={currentValue}

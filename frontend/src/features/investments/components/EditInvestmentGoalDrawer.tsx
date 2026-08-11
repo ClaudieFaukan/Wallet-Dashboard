@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import type { InvestmentGoal } from '../../../types/api';
 import { useDeleteInvestmentGoal, useUpdateInvestmentGoal } from '../hooks/useInvestments';
@@ -24,8 +25,9 @@ export function EditInvestmentGoalDrawer({
 }
 
 function EditGoalForm({ goal, onClose }: { goal: InvestmentGoal; onClose: () => void }) {
+  const { displayCurrency, toDisplayCents, fromDisplayCents } = useFormatCurrency();
   const [name, setName] = useState(goal.name);
-  const [targetAmount, setTargetAmount] = useState((goal.targetAmount / 100).toString());
+  const [targetAmount, setTargetAmount] = useState((toDisplayCents(goal.targetAmount) / 100).toString());
   const [color, setColor] = useState(goal.color ?? '');
 
   const update = useUpdateInvestmentGoal();
@@ -39,7 +41,7 @@ function EditGoalForm({ goal, onClose }: { goal: InvestmentGoal; onClose: () => 
         id: goal.id,
         input: {
           name,
-          targetAmount: Math.round(Number(targetAmount) * 100),
+          targetAmount: fromDisplayCents(Math.round(Number(targetAmount) * 100)),
           color: color || undefined,
         },
       },
@@ -67,7 +69,7 @@ function EditGoalForm({ goal, onClose }: { goal: InvestmentGoal; onClose: () => 
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
       <Input
-        label="Montant cible (€)"
+        label={`Montant cible (${displayCurrency})`}
         type="number"
         step="0.01"
         min="1"

@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import { useCreateInvestmentGoal } from '../hooks/useInvestments';
 
@@ -11,11 +12,12 @@ export function CreateInvestmentGoalDrawer({ open, onClose }: { open: boolean; o
   const [targetAmount, setTargetAmount] = useState('');
   const create = useCreateInvestmentGoal();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     create.mutate(
-      { name, targetAmount: Math.round(Number(targetAmount) * 100) },
+      { name, targetAmount: fromDisplayCents(Math.round(Number(targetAmount) * 100)) },
       {
         onSuccess: () => {
           toast.success('Objectif créé');
@@ -33,7 +35,7 @@ export function CreateInvestmentGoalDrawer({ open, onClose }: { open: boolean; o
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
         <Input
-          label="Montant cible (€)"
+          label={`Montant cible (${displayCurrency})`}
           type="number"
           step="0.01"
           min="1"

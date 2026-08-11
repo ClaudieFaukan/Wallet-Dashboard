@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Drawer } from '../../../components/ui/Drawer';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import type { InvestmentAssetType, InvestmentEntry, InvestmentEntryType } from '../../../types/api';
 import { useUpdateEntry } from '../hooks/useInvestments';
@@ -34,9 +35,14 @@ function EditEntryForm({
   entry: InvestmentEntry;
   onClose: () => void;
 }) {
+  const { displayCurrency, toDisplayCents, fromDisplayCents } = useFormatCurrency();
   const [date, setDate] = useState(entry.date.slice(0, 10));
-  const [amountInvested, setAmountInvested] = useState((entry.amountInvested / 100).toString());
-  const [portfolioValue, setPortfolioValue] = useState((entry.portfolioValue / 100).toString());
+  const [amountInvested, setAmountInvested] = useState(
+    (toDisplayCents(entry.amountInvested) / 100).toString(),
+  );
+  const [portfolioValue, setPortfolioValue] = useState(
+    (toDisplayCents(entry.portfolioValue) / 100).toString(),
+  );
   const [entryType, setEntryType] = useState<InvestmentEntryType>(entry.entryType);
   const [ticker, setTicker] = useState(entry.ticker ?? '');
   const [assetType, setAssetType] = useState<InvestmentAssetType>(entry.assetType ?? 'etf');
@@ -54,8 +60,8 @@ function EditEntryForm({
         entryId: entry.id,
         input: {
           date: new Date(date).toISOString(),
-          amountInvested: Math.round(Number(amountInvested) * 100),
-          portfolioValue: Math.round(Number(portfolioValue) * 100),
+          amountInvested: fromDisplayCents(Math.round(Number(amountInvested) * 100)),
+          portfolioValue: fromDisplayCents(Math.round(Number(portfolioValue) * 100)),
           entryType,
           ticker: ticker || undefined,
           assetType: ticker ? assetType : undefined,
@@ -76,6 +82,7 @@ function EditEntryForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <EntryFormFields
+        displayCurrency={displayCurrency}
         date={date}
         onDateChange={setDate}
         amountInvested={amountInvested}

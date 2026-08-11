@@ -3,6 +3,7 @@ import { Drawer } from '../../../components/ui/Drawer';
 import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import { getErrorMessage } from '../../../lib/api';
 import { useCreateInvestmentAccount } from '../hooks/useInvestments';
 
@@ -18,11 +19,16 @@ export function CreateInvestmentAccountDrawer({
   const [currentValue, setCurrentValue] = useState('0');
   const create = useCreateInvestmentAccount();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     create.mutate(
-      { name, platform: platform || undefined, currentValue: Math.round(Number(currentValue) * 100) },
+      {
+        name,
+        platform: platform || undefined,
+        currentValue: fromDisplayCents(Math.round(Number(currentValue) * 100)),
+      },
       {
         onSuccess: () => {
           toast.success('Compte créé');
@@ -42,7 +48,7 @@ export function CreateInvestmentAccountDrawer({
         <Input label="Nom" value={name} onChange={(e) => setName(e.target.value)} required />
         <Input label="Plateforme" value={platform} onChange={(e) => setPlatform(e.target.value)} />
         <Input
-          label="Valeur actuelle (€)"
+          label={`Valeur actuelle (${displayCurrency})`}
           type="number"
           step="0.01"
           value={currentValue}
