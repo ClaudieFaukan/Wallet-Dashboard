@@ -55,7 +55,14 @@ export class TransactionsService {
     if (query.type) conditions.push(eq(schema.transactions.type, query.type));
     if (query.dateFrom) conditions.push(gte(schema.transactions.date, new Date(query.dateFrom)));
     if (query.dateTo) conditions.push(lte(schema.transactions.date, new Date(query.dateTo)));
-    if (query.search) conditions.push(ilike(schema.transactions.description, `%${query.search}%`));
+    if (query.search) {
+      conditions.push(
+        or(
+          ilike(schema.transactions.description, `%${query.search}%`),
+          ilike(schema.categories.name, `%${query.search}%`),
+        )!,
+      );
+    }
 
     if (query.cursor) {
       const cursor = decodeCursor(query.cursor);
@@ -72,6 +79,7 @@ export class TransactionsService {
       .select({ transaction: schema.transactions })
       .from(schema.transactions)
       .innerJoin(schema.accounts, eq(schema.transactions.accountId, schema.accounts.id))
+      .leftJoin(schema.categories, eq(schema.transactions.categoryId, schema.categories.id))
       .where(and(...conditions))
       .orderBy(desc(schema.transactions.date), desc(schema.transactions.id))
       .limit(query.limit + 1);

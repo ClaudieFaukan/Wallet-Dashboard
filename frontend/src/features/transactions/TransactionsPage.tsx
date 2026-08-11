@@ -63,8 +63,8 @@ export function TransactionsPage() {
       <Header
         title="Transactions"
         actions={
-          <Button size="sm" icon={<Plus size={14} />} onClick={() => setDrawerOpen(true)}>
-            Ajouter
+          <Button size="md" icon={<Plus size={16} />} onClick={() => setDrawerOpen(true)}>
+            Ajouter une transaction
           </Button>
         }
       />
@@ -91,7 +91,14 @@ export function TransactionsPage() {
         </div>
 
         <Card>
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {typeChips.map((chip) => (
+                <FilterChip key={chip.value} active={type === chip.value} onClick={() => setType(chip.value)}>
+                  {chip.label}
+                </FilterChip>
+              ))}
+            </div>
             <div className="relative w-56">
               <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
               <Input
@@ -101,6 +108,8 @@ export function TransactionsPage() {
                 className="pl-8"
               />
             </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-border pt-4">
             <Select label="Compte" value={accountId} onChange={(e) => setAccountId(e.target.value)} className="w-40">
               <option value="">Tous les comptes</option>
               {accounts?.map((a) => (
@@ -124,13 +133,6 @@ export function TransactionsPage() {
                 Réinitialiser
               </Button>
             )}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {typeChips.map((chip) => (
-              <FilterChip key={chip.value} active={type === chip.value} onClick={() => setType(chip.value)}>
-                {chip.label}
-              </FilterChip>
-            ))}
           </div>
         </Card>
 

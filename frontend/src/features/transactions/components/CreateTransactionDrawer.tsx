@@ -5,6 +5,7 @@ import { Select } from '../../../components/ui/Select';
 import { Button } from '../../../components/ui/Button';
 import { useToast } from '../../../components/ui/Toast';
 import { getErrorMessage } from '../../../lib/api';
+import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { Account, Category, TransactionType } from '../../../types/api';
 import { useCreateTransaction } from '../hooks/useTransactions';
 
@@ -29,10 +30,11 @@ export function CreateTransactionDrawer({
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const create = useCreateTransaction();
   const toast = useToast();
+  const { displayCurrency, fromDisplayCents } = useFormatCurrency();
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const cents = Math.round(Number(amount) * 100);
+    const cents = fromDisplayCents(Math.round(Number(amount) * 100));
     create.mutate(
       {
         accountId: accountId || accounts[0]?.id || '',
@@ -73,7 +75,7 @@ export function CreateTransactionDrawer({
           <option value="transfer">Virement</option>
         </Select>
         <Input
-          label="Montant (€)"
+          label={`Montant (${displayCurrency})`}
           type="number"
           step="0.01"
           value={amount}
