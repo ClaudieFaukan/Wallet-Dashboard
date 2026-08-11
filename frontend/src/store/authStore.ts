@@ -25,19 +25,30 @@ export function getAccessToken(): string | null {
   return useAuthStore.getState().accessToken;
 }
 
-/** Decodes the JWT payload client-side to read the user's email — the token
- * only carries `sub`/`email` and there is no `/auth/me` route. Not used for
- * anything security-sensitive, purely for display in the sidebar. */
-export function getEmailFromToken(token: string | null): string | null {
+interface TokenPayload {
+  email?: string;
+  isDemo?: boolean;
+}
+
+/** Decodes the JWT payload client-side — the token carries `sub`/`email`/`isDemo` and
+ * there is no `/auth/me` route. Not used for anything security-sensitive: the backend
+ * (requireAuth) is what actually enforces the demo account's restrictions, this is
+ * purely to drive display (sidebar email, greying out demo-unavailable UI). */
+function decodeToken(token: string | null): TokenPayload | null {
   if (!token) return null;
   try {
     const payload = token.split('.')[1];
     if (!payload) return null;
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as {
-      email?: string;
-    };
-    return decoded.email ?? null;
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/'))) as TokenPayload;
   } catch {
     return null;
   }
+}
+
+export function getEmailFromToken(token: string | null): string | null {
+  return decodeToken(token)?.email ?? null;
+}
+
+export function getIsDemoFromToken(token: string | null): boolean {
+  return decodeToken(token)?.isDemo ?? false;
 }

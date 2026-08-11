@@ -7,7 +7,7 @@ import { CollectiblesService } from './collectibles.service.js';
 const collectiblesService = new CollectiblesService(db, settingsService);
 
 /** Runs for every registered user (normally just one — see AuthService.register — plus the
- * read-only demo account from FEAT-09, which simply has no API keys configured and no-ops). */
+ * demo account from FEAT-09, which simply has no API keys configured and no-ops). */
 export function scheduleCollectiblesSync(): void {
   cron.schedule('0 3 * * *', async () => {
     const users = await db.select({ id: schema.users.id }).from(schema.users);

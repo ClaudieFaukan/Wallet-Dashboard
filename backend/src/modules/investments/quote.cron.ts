@@ -5,8 +5,8 @@ import { settingsService } from '../settings/settings.routes.js';
 import { quoteService } from './investments.routes.js';
 
 /** `stock_quotes` is a single global cache (not per-user), so this only needs one configured
- * Alpha Vantage key to refresh it — normally the one real user's, the read-only demo account
- * never has API keys configured so it's simply skipped when checked. */
+ * Alpha Vantage key to refresh it — normally the one real user's, the demo account never has
+ * API keys configured so it's simply skipped when checked. */
 export function scheduleQuoteSync(): void {
   cron.schedule('30 3 * * *', async () => {
     const users = await db.select({ id: schema.users.id }).from(schema.users);

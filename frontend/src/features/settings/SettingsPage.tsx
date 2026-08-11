@@ -9,6 +9,7 @@ import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../components/ui/Toast';
 import { getErrorMessage } from '../../lib/api';
+import { getIsDemoFromToken, useAuthStore } from '../../store/authStore';
 import { useUiStore } from '../../store/uiStore';
 import {
   useCategories,
@@ -125,6 +126,7 @@ interface IntegrationGroupProps {
   onTest: (values: Partial<Record<FieldName, string>>) => void;
   testing: boolean;
   testResult?: TestSettingResult;
+  disabled?: boolean;
 }
 
 function IntegrationGroup({
@@ -136,6 +138,7 @@ function IntegrationGroup({
   onTest,
   testing,
   testResult,
+  disabled = false,
 }: IntegrationGroupProps) {
   const [values, setValues] = useState<Partial<Record<FieldName, string>>>({});
   const hasAnyValue = fields.some((f) => values[f.name]?.trim());
@@ -154,9 +157,13 @@ function IntegrationGroup({
     <div className="space-y-2 border-t border-border pt-4 first:border-t-0 first:pt-0">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-text-primary">{title}</span>
-        <Badge variant={configured ? 'success' : 'neutral'}>
-          {configured ? 'Configuré ✓' : 'Non configuré'}
-        </Badge>
+        {disabled ? (
+          <Badge variant="neutral">Non disponible en démo</Badge>
+        ) : (
+          <Badge variant={configured ? 'success' : 'neutral'}>
+            {configured ? 'Configuré ✓' : 'Non configuré'}
+          </Badge>
+        )}
       </div>
       <div className="flex flex-wrap items-end gap-2">
         {fields.map((f) => (
@@ -168,20 +175,32 @@ function IntegrationGroup({
             placeholder={configured ? '••••••••' : ''}
             value={values[f.name] ?? ''}
             onChange={(e) => setValues((v) => ({ ...v, [f.name]: e.target.value }))}
+            disabled={disabled}
+            className={disabled ? 'opacity-50' : ''}
           />
         ))}
-        <Button size="sm" variant="secondary" disabled={!hasAnyValue || saving} onClick={handleSave}>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={disabled || !hasAnyValue || saving}
+          onClick={handleSave}
+        >
           Enregistrer
         </Button>
         <Button
           size="sm"
           variant="ghost"
-          disabled={!hasAllValues || testing}
+          disabled={disabled || !hasAllValues || testing}
           onClick={() => onTest(values)}
         >
           Tester
         </Button>
       </div>
+      {disabled && (
+        <p className="text-xs text-text-muted">
+          Les clés API ne sont pas modifiables sur la version démo.
+        </p>
+      )}
       {testResult && (
         <p className={`text-xs ${testResult.success ? 'text-accent-2' : 'text-accent-3'}`}>
           {testResult.message}
@@ -197,6 +216,8 @@ function IntegrationsSection() {
   const testSetting = useTestSetting();
   const toast = useToast();
   const [testResults, setTestResults] = useState<Record<string, TestSettingResult>>({});
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isDemo = getIsDemoFromToken(accessToken);
 
   async function handleSave(values: Partial<Record<FieldName, string>>) {
     try {
@@ -233,6 +254,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('etherscan', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.etherscan}
         />
         <IntegrationGroup
@@ -246,6 +268,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('cryptoCom', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.cryptoCom}
         />
         <IntegrationGroup
@@ -256,6 +279,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('pokemonPriceTracker', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.pokemonPriceTracker}
         />
         <IntegrationGroup
@@ -266,6 +290,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('poketrace', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.poketrace}
         />
         <IntegrationGroup
@@ -279,6 +304,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('revolut', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.revolut}
         />
         <IntegrationGroup
@@ -289,6 +315,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('alphaVantage', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.alphaVantage}
         />
         <IntegrationGroup
@@ -302,6 +329,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('binance', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.binance}
         />
         <IntegrationGroup
@@ -315,6 +343,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('bybit', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.bybit}
         />
         <IntegrationGroup
@@ -325,6 +354,7 @@ function IntegrationsSection() {
           saving={updateSettings.isPending}
           onTest={(v) => handleTest('meria', v)}
           testing={testSetting.isPending}
+          disabled={isDemo}
           testResult={testResults.meria}
         />
       </div>

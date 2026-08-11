@@ -15,6 +15,12 @@ interface AccessTokenPayload {
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+// The demo account is otherwise fully editable (reseeded fresh on every login — see
+// AuthService.login) so visitors can actually try the product, not just look at it.
+// Only third-party API keys/integrations stay locked down, since those are real
+// secrets read from this machine's env/DB, not demo data.
+const DEMO_BLOCKED_PREFIXES = ['/api/v1/settings'];
+
 export const requireAuth: RequestHandler = (req: Request, _res: Response, next: NextFunction) => {
   const header = req.headers.authorization;
   const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length) : undefined;
@@ -26,10 +32,12 @@ export const requireAuth: RequestHandler = (req: Request, _res: Response, next: 
 
   try {
     const payload = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
-    // FEAT-09 (docs/feat1.md): the seeded demo account is read-only — blocking mutations
-    // here, centrally, covers every protected router without touching each one individually.
-    if (payload.isDemo && !SAFE_METHODS.has(req.method)) {
-      next(new AppError(403, 'DEMO_READ_ONLY', 'Mode démo — compte en lecture seule'));
+    const isBlockedForDemo =
+      payload.isDemo &&
+      !SAFE_METHODS.has(req.method) &&
+      DEMO_BLOCKED_PREFIXES.some((prefix) => req.baseUrl.startsWith(prefix));
+    if (isBlockedForDemo) {
+      next(new AppError(403, 'DEMO_READ_ONLY', 'Mode démo — réglages non modifiables (clés API, intégrations)'));
       return;
     }
     (req as AuthenticatedRequest).user = { id: payload.sub, email: payload.email, isDemo: payload.isDemo };

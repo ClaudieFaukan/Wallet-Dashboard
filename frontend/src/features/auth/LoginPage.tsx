@@ -11,6 +11,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const navigate = useNavigate();
 
   const login = useLogin();
@@ -28,9 +29,13 @@ export function LoginPage() {
   }
 
   function handleDemoLogin() {
+    setDemoLoading(true);
     login.mutate(
       { email: 'demo@finance.app', password: 'demo123' },
-      { onSuccess: () => navigate('/', { replace: true }) },
+      {
+        onSuccess: () => navigate('/', { replace: true }),
+        onSettled: () => setDemoLoading(false),
+      },
     );
   }
 
@@ -86,7 +91,7 @@ export function LoginPage() {
           )}
 
           <Button type="submit" disabled={mutation.isPending} className="mt-1 w-full">
-            {mutation.isPending
+            {mutation.isPending && !demoLoading
               ? 'Chargement…'
               : mode === 'login'
                 ? 'Se connecter'
@@ -101,7 +106,7 @@ export function LoginPage() {
             onClick={handleDemoLogin}
             className="mt-3 w-full"
           >
-            Accéder au compte démo
+            {demoLoading ? 'Préparation du compte démo…' : 'Accéder au compte démo'}
           </Button>
         )}
 

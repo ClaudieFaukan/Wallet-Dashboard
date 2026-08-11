@@ -7,8 +7,8 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
   currency: text('currency').notNull().default('EUR'),
-  // FEAT-09 (docs/feat1.md): the seeded demo account (see db/seeds/demo.ts) — requireAuth
-  // rejects any mutating request from it with 403 DEMO_READ_ONLY.
+  // FEAT-09 (docs/feat1.md): the seeded demo account (see db/seeds/demo-data.ts) — fully
+  // editable except /settings (requireAuth), reseeded fresh on every login.
   isDemo: boolean('is_demo').notNull().default(false),
   ...timestamps,
 });

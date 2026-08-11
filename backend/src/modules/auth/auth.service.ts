@@ -8,6 +8,7 @@ import { AppError } from '../../shared/utils/AppError.js';
 import { parseDurationMs } from '../../shared/utils/duration.js';
 import { env } from '../../config/env.js';
 import { DEFAULT_CATEGORIES } from '../../db/seeds/categories.js';
+import { DEMO_EMAIL, DEMO_PASSWORD, seedDemoAccount } from '../../db/seeds/demo-data.js';
 import type { LoginInput, RegisterInput } from './auth.schema.js';
 
 const BCRYPT_COST = 12;
@@ -47,6 +48,17 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<AuthTokens> {
+    // The demo account is fully editable (see requireAuth) so it can get messed up by
+    // whoever used it last — reseed it fresh on every login instead of checking a
+    // stored password hash, rather than relying on a stale row that may not exist yet.
+    if (input.email === DEMO_EMAIL) {
+      if (input.password !== DEMO_PASSWORD) {
+        throw new AppError(401, 'INVALID_CREDENTIALS', 'Invalid email or password');
+      }
+      const user = await seedDemoAccount(this.db);
+      return this.issueTokens(user.id, user.email, false, true);
+    }
+
     const [user] = await this.db
       .select()
       .from(schema.users)
