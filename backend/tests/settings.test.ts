@@ -24,6 +24,155 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('POST /settings/dev-reset', () => {
+  it('wipes accounts/budget/savings/investments/real-estate/credits but keeps user, settings, categories, crypto and collectibles', async () => {
+    const { agent, accessToken, userId } = await registerAndGetToken();
+
+    const [account] = await db
+      .insert(schema.accounts)
+      .values({ userId, name: 'Compte', type: 'checking', balance: 1000 })
+      .returning();
+    await db.insert(schema.transactions).values({
+      accountId: account!.id,
+      amount: -500,
+      currency: 'EUR',
+      type: 'expense',
+      description: 'Test',
+      date: new Date(),
+    });
+    const [category] = await db
+      .insert(schema.categories)
+      .values({ userId, name: 'Alimentation', type: 'expense' })
+      .returning();
+    const [budgetPeriod] = await db
+      .insert(schema.budgetPeriods)
+      .values({ userId, month: '2026-01-01' })
+      .returning();
+    await db
+      .insert(schema.budgetLines)
+      .values({ budgetPeriodId: budgetPeriod!.id, categoryId: category!.id, plannedAmount: 10000 });
+    await db
+      .insert(schema.savingsGoals)
+      .values({ userId, name: 'Urgence', targetAmount: 100000 });
+    await db
+      .insert(schema.investmentAccounts)
+      .values({ userId, name: 'PEA', currentValue: 5000 });
+    await db.insert(schema.realEstateAssets).values({
+      userId,
+      name: 'Appart',
+      type: 'physical',
+      purchasePrice: 100000,
+      currentValue: 110000,
+      purchaseDate: '2020-01-01',
+    });
+    await db.insert(schema.credits).values({
+      userId,
+      name: 'Prêt auto',
+      institution: 'Banque',
+      initialAmount: 10000,
+      remainingAmount: 8000,
+      monthlyPayment: 200,
+      interestRate: 0.02,
+      startDate: new Date('2024-01-01'),
+      endDate: new Date('2029-01-01'),
+    });
+    await db
+      .insert(schema.cryptoWallets)
+      .values({ userId, name: 'MetaMask', platform: 'metamask', address: '0xabc', chain: 'ethereum' });
+    await db
+      .insert(schema.collectibleItems)
+      .values({
+        userId,
+        itemType: 'card',
+        name: 'Pikachu',
+        purchasePrice: 1000,
+        purchaseDate: '2024-01-01',
+      });
+    await agent
+      .put('/api/v1/settings')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({ etherscanApiKey: 'test-key' });
+
+    const res = await agent
+      .post('/api/v1/settings/dev-reset')
+      .set('Authorization', `Bearer ${accessToken}`);
+    expect(res.status).toBe(204);
+
+    const remainingAccounts = await db
+      .select()
+      .from(schema.accounts)
+      .where(eq(schema.accounts.userId, userId));
+    const remainingTransactions = await db
+      .select()
+      .from(schema.transactions)
+      .where(eq(schema.transactions.accountId, account!.id));
+    const remainingBudgetPeriods = await db
+      .select()
+      .from(schema.budgetPeriods)
+      .where(eq(schema.budgetPeriods.userId, userId));
+    const remainingSavingsGoals = await db
+      .select()
+      .from(schema.savingsGoals)
+      .where(eq(schema.savingsGoals.userId, userId));
+    const remainingInvestmentAccounts = await db
+      .select()
+      .from(schema.investmentAccounts)
+      .where(eq(schema.investmentAccounts.userId, userId));
+    const remainingRealEstate = await db
+      .select()
+      .from(schema.realEstateAssets)
+      .where(eq(schema.realEstateAssets.userId, userId));
+    const remainingCredits = await db
+      .select()
+      .from(schema.credits)
+      .where(eq(schema.credits.userId, userId));
+    expect(remainingAccounts).toHaveLength(0);
+    expect(remainingTransactions).toHaveLength(0);
+    expect(remainingBudgetPeriods).toHaveLength(0);
+    expect(remainingSavingsGoals).toHaveLength(0);
+    expect(remainingInvestmentAccounts).toHaveLength(0);
+    expect(remainingRealEstate).toHaveLength(0);
+    expect(remainingCredits).toHaveLength(0);
+
+    const remainingUser = await db.select().from(schema.users).where(eq(schema.users.id, userId));
+    const remainingCategories = await db
+      .select()
+      .from(schema.categories)
+      .where(eq(schema.categories.userId, userId));
+    const remainingWallets = await db
+      .select()
+      .from(schema.cryptoWallets)
+      .where(eq(schema.cryptoWallets.userId, userId));
+    const remainingCollectibles = await db
+      .select()
+      .from(schema.collectibleItems)
+      .where(eq(schema.collectibleItems.userId, userId));
+    const remainingSettings = await db
+      .select()
+      .from(schema.appSettings)
+      .where(and(eq(schema.appSettings.userId, userId), eq(schema.appSettings.key, 'etherscan_api_key')));
+    expect(remainingUser).toHaveLength(1);
+    expect(remainingCategories.map((c) => c.name)).toContain('Alimentation');
+    expect(remainingWallets).toHaveLength(1);
+    expect(remainingCollectibles).toHaveLength(1);
+    expect(remainingSettings).toHaveLength(1);
+  });
+
+  it('is blocked for the demo account', async () => {
+    const agent = request.agent(app);
+    const demoRes = await agent
+      .post('/api/v1/auth/login')
+      .send({ email: 'demo@finance.app', password: 'demo123' });
+    const accessToken = demoRes.body.data.accessToken as string;
+
+    const res = await agent
+      .post('/api/v1/settings/dev-reset')
+      .set('Authorization', `Bearer ${accessToken}`);
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('DEMO_READ_ONLY');
+  });
+});
+
 describe('settings module', () => {
   it('reports everything unconfigured before any key is saved', async () => {
     const { agent, accessToken } = await registerAndGetToken();

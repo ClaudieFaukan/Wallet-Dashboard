@@ -156,4 +156,23 @@ export class SettingsService {
       return { success: false, message: err instanceof Error ? err.message : 'Échec du test.' };
     }
   }
+
+  /** Dev-only convenience for wiping accumulated test data between manual test
+   * passes. Deletes accounts/transactions, budget, savings, investments,
+   * real estate and credits (each cascades its child rows). Keeps the user,
+   * settings, categories, crypto wallets and collectibles untouched. */
+  async resetDevData(userId: string): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await tx.delete(schema.accounts).where(eq(schema.accounts.userId, userId));
+      await tx.delete(schema.budgetPeriods).where(eq(schema.budgetPeriods.userId, userId));
+      await tx.delete(schema.savingsGoals).where(eq(schema.savingsGoals.userId, userId));
+      await tx.delete(schema.investmentAccounts).where(eq(schema.investmentAccounts.userId, userId));
+      await tx
+        .delete(schema.investmentMilestones)
+        .where(eq(schema.investmentMilestones.userId, userId));
+      await tx.delete(schema.investmentGoals).where(eq(schema.investmentGoals.userId, userId));
+      await tx.delete(schema.realEstateAssets).where(eq(schema.realEstateAssets.userId, userId));
+      await tx.delete(schema.credits).where(eq(schema.credits.userId, userId));
+    });
+  }
 }

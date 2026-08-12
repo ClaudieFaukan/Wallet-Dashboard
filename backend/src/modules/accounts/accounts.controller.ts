@@ -1,11 +1,8 @@
 import type { RequestHandler } from 'express';
 import type { AuthenticatedRequest } from '../../shared/middleware/auth.middleware.js';
 import { AppError } from '../../shared/utils/AppError.js';
-import type {
-  BalanceHistoryQuery,
-  CreateAccountInput,
-  UpdateAccountInput,
-} from './accounts.schema.js';
+import { pdfImportConfirmSchema } from './accounts.schema.js';
+import type { BalanceHistoryQuery, CreateAccountInput, UpdateAccountInput } from './accounts.schema.js';
 import type { AccountsService } from './accounts.service.js';
 
 export class AccountsController {
@@ -90,6 +87,45 @@ export class AccountsController {
         req.file.buffer.toString('utf8'),
       );
       res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  previewPdfImport: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      if (!req.file) throw new AppError(400, 'MISSING_FILE', 'No PDF file uploaded');
+      const sections = await this.accountsService.previewPdfImport(user.id, req.file.buffer);
+      res.json({ success: true, data: sections });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  confirmPdfImport: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      if (!req.file) throw new AppError(400, 'MISSING_FILE', 'No PDF file uploaded');
+
+      let parsedMapping: unknown;
+      try {
+        parsedMapping = JSON.parse(typeof req.body.mapping === 'string' ? req.body.mapping : '');
+      } catch {
+        throw new AppError(400, 'INVALID_MAPPING', 'Mapping is missing or not valid JSON');
+      }
+
+      const result = pdfImportConfirmSchema.safeParse({ mapping: parsedMapping });
+      if (!result.success) {
+        throw new AppError(400, 'VALIDATION_ERROR', 'Invalid mapping', result.error.issues);
+      }
+
+      const imports = await this.accountsService.confirmPdfImport(
+        user.id,
+        req.file.buffer,
+        result.data.mapping,
+      );
+      res.json({ success: true, data: imports });
     } catch (err) {
       next(err);
     }

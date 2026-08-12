@@ -54,9 +54,17 @@ export class SavingsService {
     await this.db.delete(schema.savingsGoals).where(eq(schema.savingsGoals.id, id));
   }
 
-  async deposit(userId: string, id: string, amount: number) {
+  // `date`/`notes` are only ever set by bank statement imports backdating a
+  // deposit to when the movement actually happened — manual deposits from the
+  // public API always use "now" with no notes, via the 2-arg call form.
+  async deposit(userId: string, id: string, amount: number, options?: { date?: Date; notes?: string }) {
     await this.getById(userId, id);
-    await this.db.insert(schema.savingsDeposits).values({ goalId: id, amount });
+    await this.db.insert(schema.savingsDeposits).values({
+      goalId: id,
+      amount,
+      ...(options?.date && { date: options.date }),
+      ...(options?.notes && { notes: options.notes }),
+    });
     const updated = await this.recomputeCurrentAmount(id);
 
     const reachedMilestones = await this.checkMilestones(updated);

@@ -17,7 +17,7 @@ import {
 import { InvestmentsService } from './investments.service.js';
 import { QuoteService } from './quote.service.js';
 
-const investmentsService = new InvestmentsService(db);
+export const investmentsService = new InvestmentsService(db);
 export const quoteService = new QuoteService(db, settingsService);
 const investmentsController = new InvestmentsController(investmentsService, quoteService);
 

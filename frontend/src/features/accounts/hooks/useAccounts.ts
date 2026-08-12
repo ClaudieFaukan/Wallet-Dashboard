@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
-import type { CreateAccountInput } from '../../../types/api';
+import type { CreateAccountInput, PdfImportMappingItem } from '../../../types/api';
 
 export const accountsKey = ['accounts'];
 
@@ -47,6 +47,24 @@ export function useImportCsv() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, file }: { id: string; file: File }) => api.accounts.importCsv(id, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: accountsKey });
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    },
+  });
+}
+
+export function usePreviewPdfImport() {
+  return useMutation({
+    mutationFn: (file: File) => api.accounts.importPdfPreview(file),
+  });
+}
+
+export function useConfirmPdfImport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, mapping }: { file: File; mapping: PdfImportMappingItem[] }) =>
+      api.accounts.importPdfConfirm(file, mapping),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: accountsKey });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });

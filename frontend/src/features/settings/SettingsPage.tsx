@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Coins, Fingerprint, KeyRound, Plus, Tag, Trash2 } from 'lucide-react';
+import { AlertTriangle, Coins, Fingerprint, KeyRound, Plus, Tag, Trash2 } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -17,7 +17,12 @@ import {
   useDeleteCategory,
 } from '../transactions/hooks/useTransactions';
 import { useTouchIdAvailability } from './hooks/useTouchIdAvailability';
-import { useSettingsStatus, useTestSetting, useUpdateSettings } from './hooks/useSettings';
+import {
+  useResetDevData,
+  useSettingsStatus,
+  useTestSetting,
+  useUpdateSettings,
+} from './hooks/useSettings';
 import type {
   CategoryType,
   DisplayCurrency,
@@ -362,12 +367,60 @@ function IntegrationsSection() {
   );
 }
 
+function DevResetSection() {
+  const resetDevData = useResetDevData();
+  const toast = useToast();
+  const [confirming, setConfirming] = useState(false);
+
+  function handleClick() {
+    if (!confirming) {
+      setConfirming(true);
+      setTimeout(() => setConfirming(false), 4000);
+      return;
+    }
+    setConfirming(false);
+    resetDevData.mutate(undefined, {
+      onSuccess: () => toast.success('Données de dev réinitialisées'),
+      onError: (err) => toast.error(getErrorMessage(err)),
+    });
+  }
+
+  return (
+    <Card className="border-accent-3/30">
+      <h3 className="mb-4 flex items-center gap-2 text-sm font-medium text-accent-3">
+        <AlertTriangle size={16} /> Zone de développement
+      </h3>
+      <p className="mb-4 text-xs text-text-muted">
+        Supprime comptes, transactions, budgets, objectifs d'épargne, investissements, biens
+        immobiliers et crédits. Conserve ton compte utilisateur, tes réglages, tes catégories, tes
+        cryptos et tes collectibles. Action irréversible — bouton temporaire, à retirer avant mise en
+        prod.
+      </p>
+      <Button
+        variant="danger"
+        size="sm"
+        onClick={handleClick}
+        disabled={resetDevData.isPending}
+        icon={<Trash2 size={14} />}
+      >
+        {resetDevData.isPending
+          ? 'Réinitialisation…'
+          : confirming
+            ? 'Cliquer à nouveau pour confirmer'
+            : 'Réinitialiser les données de dev'}
+      </Button>
+    </Card>
+  );
+}
+
 export function SettingsPage() {
   const touchIdAvailable = useTouchIdAvailability();
   const touchIdEnabled = useUiStore((s) => s.touchIdEnabled);
   const setTouchIdEnabled = useUiStore((s) => s.setTouchIdEnabled);
   const displayCurrency = useUiStore((s) => s.displayCurrency);
   const setDisplayCurrency = useUiStore((s) => s.setDisplayCurrency);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isDemo = getIsDemoFromToken(accessToken);
 
   return (
     <div>
@@ -407,6 +460,8 @@ export function SettingsPage() {
         <CategoriesSection />
 
         <IntegrationsSection />
+
+        {import.meta.env.DEV && !isDemo && <DevResetSection />}
       </div>
     </div>
   );

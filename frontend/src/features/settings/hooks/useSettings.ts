@@ -23,3 +23,11 @@ export function useTestSetting() {
     mutationFn: (input: TestSettingInput) => api.settings.test(input),
   });
 }
+
+export function useResetDevData() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.settings.devReset(),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
+}

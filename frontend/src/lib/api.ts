@@ -41,6 +41,9 @@ import type {
   InvestmentMilestonesView,
   ListTransactionsQuery,
   ManualPriceUpdateInput,
+  PdfImportMappingItem,
+  PdfImportPreviewSection,
+  PdfImportResult,
   ProjectionQuery,
   ProjectionResult,
   RealEstateAsset,
@@ -184,6 +187,25 @@ export const api = {
       form.append('file', file);
       return unwrap(
         client.post<ApiResponse<CsvImportResult>>(`/accounts/${id}/import/csv`, form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }),
+      );
+    },
+    importPdfPreview: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return unwrap(
+        client.post<ApiResponse<PdfImportPreviewSection[]>>('/accounts/import/pdf/preview', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }),
+      );
+    },
+    importPdfConfirm: (file: File, mapping: PdfImportMappingItem[]) => {
+      const form = new FormData();
+      form.append('file', file);
+      form.append('mapping', JSON.stringify(mapping));
+      return unwrap(
+        client.post<ApiResponse<PdfImportResult[]>>('/accounts/import/pdf/confirm', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
         }),
       );
@@ -356,6 +378,7 @@ export const api = {
       unwrap(client.put<ApiResponse<SettingsStatus>>('/settings', input)),
     test: (input: TestSettingInput) =>
       unwrap(client.post<ApiResponse<TestSettingResult>>('/settings/test', input)),
+    devReset: () => client.post('/settings/dev-reset'),
   },
 
   exchangeRates: {

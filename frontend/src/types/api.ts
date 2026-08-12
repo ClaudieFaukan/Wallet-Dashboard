@@ -11,6 +11,7 @@ export interface Account {
   name: string;
   type: AccountType;
   institution: string | null;
+  accountNumber: string | null;
   balance: number;
   currency: string;
   color: string | null;
@@ -41,6 +42,44 @@ export interface CsvImportResult {
   imported: number;
   skipped: number;
   total: number;
+}
+
+export interface PdfImportPreviewSection {
+  accountLabel: string;
+  accountNumber: string;
+  transactionCount: number;
+  dateRange: { from: string; to: string } | null;
+  suggestedAccountId: string | null;
+  suggestedSavingsGoalId: string | null;
+  suggestedInvestmentAccountId: string | null;
+  // Computed backend-side, per source bank (a keyword can mean different
+  // things across banks — e.g. Revolut's "Dépôt" is a savings vault, but
+  // Caisse d'Épargne's "compte de dépôt" is the everyday checking account).
+  suggestedTargetType: 'account' | 'savings_goal' | 'investment_account';
+}
+
+// A PDF section can route into any of three domain modules — a livret is a
+// savings goal, a PEA/brokerage cash pocket belongs with investments, and
+// only a plain checking/savings account maps to `accounts`. Mirrors the
+// backend's `pdfImportTargetSchema` discriminated union exactly.
+export type PdfImportTarget =
+  | { type: 'skip' }
+  | { type: 'account'; accountId: string }
+  | { type: 'account'; createAccount: { name: string; type: AccountType } }
+  | { type: 'savings_goal'; goalId: string }
+  | { type: 'savings_goal'; createGoal: { name: string; targetAmount: number } }
+  | { type: 'investment_account'; investmentAccountId: string }
+  | { type: 'investment_account'; createInvestmentAccount: { name: string; platform?: string } };
+
+export interface PdfImportMappingItem {
+  accountNumber: string;
+  target: PdfImportTarget;
+}
+
+export interface PdfImportResult extends CsvImportResult {
+  accountNumber: string;
+  targetType: 'account' | 'savings_goal' | 'investment_account';
+  targetId: string;
 }
 
 export type CategoryType = 'income' | 'expense';

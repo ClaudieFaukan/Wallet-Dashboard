@@ -11,7 +11,7 @@ import {
 } from './savings.schema.js';
 import { SavingsService } from './savings.service.js';
 
-const savingsService = new SavingsService(db);
+export const savingsService = new SavingsService(db);
 const savingsController = new SavingsController(savingsService);
 
 export const savingsRouter = Router();

@@ -18,6 +18,9 @@ export const investmentAccounts = pgTable('investment_accounts', {
   platform: text('platform'),
   currentValue: integer('current_value').notNull().default(0),
   currency: text('currency').notNull().default('EUR'),
+  // Bank account number detected on a PDF statement import — lets a future
+  // import of the same PEA/brokerage cash pocket auto-suggest this account again.
+  accountNumber: text('account_number'),
   ...timestamps,
 });
 

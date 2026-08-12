@@ -12,6 +12,9 @@ export const savingsGoals = pgTable('savings_goals', {
   name: text('name').notNull(),
   targetAmount: integer('target_amount').notNull(),
   currentAmount: integer('current_amount').notNull().default(0),
+  // Bank account number detected on a PDF statement import — lets a future
+  // import of the same livret auto-suggest this goal as the target again.
+  accountNumber: text('account_number'),
   deadline: date('deadline'),
   color: text('color'),
   icon: text('icon'),

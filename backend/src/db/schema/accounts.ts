@@ -12,6 +12,7 @@ export const accounts = pgTable('accounts', {
   name: text('name').notNull(),
   type: accountTypeEnum('type').notNull(),
   institution: text('institution'),
+  accountNumber: text('account_number'),
   balance: integer('balance').notNull().default(0),
   currency: text('currency').notNull().default('EUR'),
   color: text('color'),

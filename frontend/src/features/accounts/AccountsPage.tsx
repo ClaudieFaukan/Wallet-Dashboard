@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Upload } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -11,12 +11,14 @@ import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { usePatrimoineRows } from '../../hooks/usePatrimoineRows';
 import { AssetTable } from './components/AssetTable';
 import { CreateAccountDrawer } from './components/CreateAccountDrawer';
+import { ImportPdfModal } from './components/ImportPdfModal';
 
 const DONUT_TOP_N = 8;
 
 export function AccountsPage() {
   const { rows, assetsTotal, assetsYtdVariation, assetsYtdVariationPct, isLoading } = usePatrimoineRows();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const { formatCents } = useFormatCurrency();
 
   const assetRows = [...rows]
@@ -35,9 +37,19 @@ export function AccountsPage() {
       <Header
         title="Patrimoine"
         actions={
-          <Button size="sm" icon={<Plus size={14} />} onClick={() => setDrawerOpen(true)}>
-            Nouveau compte
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={<Upload size={14} />}
+              onClick={() => setImportOpen(true)}
+            >
+              Importer un relevé PDF
+            </Button>
+            <Button size="sm" icon={<Plus size={14} />} onClick={() => setDrawerOpen(true)}>
+              Nouveau compte
+            </Button>
+          </div>
         }
       />
       <div className="space-y-6 p-8">
@@ -73,6 +85,7 @@ export function AccountsPage() {
         {!isLoading && rows.length > 0 && <AssetTable rows={rows} isLoading={isLoading} />}
       </div>
       <CreateAccountDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <ImportPdfModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }

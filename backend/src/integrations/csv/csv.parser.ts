@@ -1,32 +1,11 @@
-import crypto from 'node:crypto';
 import { parse } from 'csv-parse/sync';
 import { AppError } from '../../shared/utils/AppError.js';
+import { disambiguateDuplicates, toTransaction, type ParsedTransaction } from '../shared/transaction.js';
 import { parseAmountToCents } from './amount.js';
 import { parseDate } from './date.js';
 import { detectFormat, type CsvFormat } from './formats.js';
 
-export interface ParsedTransaction {
-  date: Date;
-  amountCents: number;
-  description: string;
-  type: 'income' | 'expense';
-  externalId: string;
-}
-
-function computeExternalId(date: Date, amountCents: number, description: string): string {
-  const key = `${date.toISOString()}|${amountCents}|${description}`;
-  return crypto.createHash('sha256').update(key).digest('hex');
-}
-
-function toTransaction(date: Date, amountCents: number, description: string): ParsedTransaction {
-  return {
-    date,
-    amountCents,
-    description,
-    type: amountCents > 0 ? 'income' : 'expense',
-    externalId: computeExternalId(date, amountCents, description),
-  };
-}
+export type { ParsedTransaction };
 
 function parseRevolutRow(record: Record<string, string>): ParsedTransaction | null {
   const state = record.State?.trim().toUpperCase();
@@ -98,5 +77,8 @@ export function parseCsv(content: string): {
     bom: true,
   }) as Record<string, string>[];
 
-  return { format: config.format, transactions: parseRows(config.format, records) };
+  return {
+    format: config.format,
+    transactions: disambiguateDuplicates(parseRows(config.format, records)),
+  };
 }

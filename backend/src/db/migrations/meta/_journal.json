@@ -141,6 +141,27 @@
       "when": 1786527573214,
       "tag": "0019_add_fee_entry_type",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1786535809922,
+      "tag": "0020_add_account_number",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1786535917533,
+      "tag": "0021_add_pdf_import_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1786540957876,
+      "tag": "0022_add_account_number_savings_investments",
+      "breakpoints": true
     }
   ]
 }

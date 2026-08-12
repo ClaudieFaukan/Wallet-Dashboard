@@ -15,3 +15,4 @@ settingsRouter.use(requireAuth);
 settingsRouter.get('/', settingsController.getStatus);
 settingsRouter.put('/', validate(updateSettingsSchema), settingsController.update);
 settingsRouter.post('/test', validate(testSettingSchema), settingsController.test);
+settingsRouter.post('/dev-reset', settingsController.resetDevData);

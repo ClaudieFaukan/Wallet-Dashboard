@@ -33,6 +33,7 @@ export const transactionSourceEnum = pgEnum('transaction_source', [
   'manual',
   'revolut_api',
   'csv_import',
+  'pdf_import',
 ]);
 
 export const transactions = pgTable(
