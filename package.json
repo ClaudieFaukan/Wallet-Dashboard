@@ -1,7 +1,9 @@
 {
   "name": "wallet-dashboard",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "Application desktop de gestion de finances personnelles (comptes, budget, épargne, investissements, crypto, immobilier, collectibles).",
+  "author": "Pierre-Alain Petrel",
   "type": "module",
   "workspaces": [
     "electron",
@@ -20,7 +22,27 @@
     "test": "npm run test --workspace=backend",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "package:mac": "npm run build && electron-builder --mac"
+    "package:mac": "npm run build && node scripts/stage-backend.mjs && electron-builder --mac"
+  },
+  "build": {
+    "appId": "com.pierrealain.walletdashboard",
+    "productName": "Wallet Dashboard",
+    "directories": {
+      "output": "release",
+      "app": "electron"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "build/backend-prod", "to": "backend" },
+      { "from": "frontend/dist", "to": "frontend/dist" }
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "target": ["dmg"]
+    }
   },
   "devDependencies": {
     "@electron/rebuild": "^4.2.0",
