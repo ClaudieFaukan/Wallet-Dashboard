@@ -17,7 +17,7 @@ export const createEntrySchema = z.object({
   date: isoDate,
   amountInvested: z.number().int(),
   portfolioValue: z.number().int(),
-  entryType: z.enum(['contribution', 'dividend']).default('contribution'),
+  entryType: z.enum(['contribution', 'dividend', 'fee']).default('contribution'),
   notes: z.string().optional(),
   ticker: z.string().optional(),
   assetType: z.enum(['stock', 'etf']).optional(),

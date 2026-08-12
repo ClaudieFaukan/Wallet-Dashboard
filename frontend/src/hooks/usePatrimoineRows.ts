@@ -171,10 +171,11 @@ export function usePatrimoineRows() {
 
   (investments.data ?? []).forEach((acc, i) => {
     const entries = investmentEntries[i]?.data ?? [];
-    // Dividends aren't cost basis (not money out of the user's pocket) — excluded here too,
+    // Dividends and broker fees aren't cost basis (not money out of the user's pocket, resp.
+    // already reflected in the account's manually-entered value) — excluded here too,
     // consistent with InvestmentDetailPage/PositionsCard.
     const totalInvested = entries
-      .filter((e) => e.entryType !== 'dividend')
+      .filter((e) => e.entryType === 'contribution')
       .reduce((sum, e) => sum + e.amountInvested, 0);
     const points = entries.map((e) => ({ date: dayKey(e.date), value: e.portfolioValue }));
     const series = forwardFill(points, grid);

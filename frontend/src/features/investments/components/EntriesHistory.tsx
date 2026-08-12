@@ -37,8 +37,12 @@ export function EntriesHistory({ accountId, entries }: { accountId: string; entr
             className="group flex items-center gap-4 rounded-lg px-1 py-2 hover:bg-bg-elevated/40"
           >
             <span className="w-24 shrink-0 text-xs text-text-muted">{formatDate(entry.date)}</span>
-            <Badge variant={entry.entryType === 'dividend' ? 'accent' : 'neutral'}>
-              {entry.entryType === 'dividend' ? 'Dividende' : 'Versement'}
+            <Badge
+              variant={
+                entry.entryType === 'dividend' ? 'accent' : entry.entryType === 'fee' ? 'danger' : 'neutral'
+              }
+            >
+              {entry.entryType === 'dividend' ? 'Dividende' : entry.entryType === 'fee' ? 'Frais' : 'Versement'}
             </Badge>
             {entry.ticker && <span className="shrink-0 font-mono text-xs text-text-muted">{entry.ticker}</span>}
             <span className="flex-1 text-right font-mono text-sm text-text-primary">

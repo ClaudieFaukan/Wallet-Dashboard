@@ -1,0 +1,1 @@
+ALTER TYPE "public"."investment_entry_type" ADD VALUE 'fee';

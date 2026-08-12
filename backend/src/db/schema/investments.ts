@@ -3,7 +3,11 @@ import { id, timestamps } from './_helpers.js';
 import { users } from './users.js';
 
 export const investmentAssetTypeEnum = pgEnum('investment_asset_type', ['stock', 'etf']);
-export const investmentEntryTypeEnum = pgEnum('investment_entry_type', ['contribution', 'dividend']);
+export const investmentEntryTypeEnum = pgEnum('investment_entry_type', [
+  'contribution',
+  'dividend',
+  'fee',
+]);
 
 export const investmentAccounts = pgTable('investment_accounts', {
   id: id(),
@@ -27,6 +31,8 @@ export const investmentEntries = pgTable('investment_entries', {
   portfolioValue: integer('portfolio_value').notNull(),
   // 'dividend' entries carry the dividend amount in amountInvested but are excluded from
   // "total invested" (cost basis) sums everywhere — a dividend isn't money out of the user's pocket.
+  // 'fee' entries carry a broker fee (management/custody/transaction) — also excluded from cost
+  // basis, tallied separately as "Frais prélevés" so it doesn't inflate performance calculations.
   entryType: investmentEntryTypeEnum('entry_type').notNull().default('contribution'),
   notes: text('notes'),
   // Optional ETF/stock ticker (e.g. "IWDA.AS") — lets Alpha Vantage sync a live quote for it.

@@ -19,14 +19,20 @@ export function InvestmentDetailPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { formatCents } = useFormatCurrency();
 
-  // Dividends aren't money out of the user's pocket — excluded from the cost basis used for
-  // "Total investi"/Performance, surfaced separately instead (see AddEntryDrawer/EntryFormFields).
+  // Dividends aren't money out of the user's pocket and fees aren't part of the cost basis
+  // (they already show up in "Valeur actuelle" since the user enters that manually from their
+  // broker statement) — both excluded from "Total investi"/Performance, surfaced separately
+  // instead (see AddEntryDrawer/EntryFormFields).
   const totalInvested = (entries ?? [])
-    .filter((e) => e.entryType !== 'dividend')
+    .filter((e) => e.entryType === 'contribution')
     .reduce((sum, e) => sum + e.amountInvested, 0);
   const totalDividends = (entries ?? [])
     .filter((e) => e.entryType === 'dividend')
     .reduce((sum, e) => sum + e.amountInvested, 0);
+  const totalFees = (entries ?? [])
+    .filter((e) => e.entryType === 'fee')
+    .reduce((sum, e) => sum + e.amountInvested, 0);
+  const extraCards = (totalDividends > 0 ? 1 : 0) + (totalFees > 0 ? 1 : 0);
 
   return (
     <div>
@@ -40,7 +46,11 @@ export function InvestmentDetailPage() {
         }
       />
       <div className="space-y-6 p-8">
-        <div className={`grid gap-4 ${totalDividends > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <div
+          className={`grid gap-4 ${
+            extraCards === 2 ? 'grid-cols-5' : extraCards === 1 ? 'grid-cols-4' : 'grid-cols-3'
+          }`}
+        >
           <Card>
             <p className="text-sm text-text-secondary">Total investi</p>
             <p className="mt-1 font-mono text-lg font-semibold text-text-primary">{formatCents(totalInvested)}</p>
@@ -68,6 +78,12 @@ export function InvestmentDetailPage() {
             <Card>
               <p className="text-sm text-text-secondary">Dividendes reçus</p>
               <p className="mt-1 font-mono text-lg font-semibold text-accent-2">{formatCents(totalDividends)}</p>
+            </Card>
+          )}
+          {totalFees > 0 && (
+            <Card>
+              <p className="text-sm text-text-secondary">Frais prélevés</p>
+              <p className="mt-1 font-mono text-lg font-semibold text-accent-3">{formatCents(totalFees)}</p>
             </Card>
           )}
         </div>

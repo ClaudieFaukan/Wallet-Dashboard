@@ -1,17 +1,19 @@
 import { useState } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { Calculator, Plus } from 'lucide-react';
 import { Header } from '../../components/layout/Header';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { Variation } from '../../components/ui/Variation';
+import { api } from '../../lib/api';
 import { useFormatCurrency } from '../../hooks/useFormatCurrency';
 import { usePatrimoineRows } from '../../hooks/usePatrimoineRows';
 import { CreateInvestmentAccountDrawer } from './components/CreateInvestmentAccountDrawer';
 import { DcaSimulatorModal } from './components/DcaSimulatorModal';
 import { InvestmentAccountCard } from './components/InvestmentAccountCard';
 import { ObjectivesCard } from './components/ObjectivesCard';
-import { useInvestmentAccounts } from './hooks/useInvestments';
+import { investmentsKey, useInvestmentAccounts } from './hooks/useInvestments';
 
 export function InvestmentsPage() {
   const { data: accounts, isLoading } = useInvestmentAccounts();
@@ -29,6 +31,20 @@ export function InvestmentsPage() {
   const totalInvestedKnown = rowsWithGain.reduce((sum, r) => sum + (r.value - r.allTimeGain!), 0);
   const totalGainKnown = rowsWithGain.reduce((sum, r) => sum + r.allTimeGain!, 0);
   const totalGainPct = totalInvestedKnown > 0 ? (totalGainKnown / totalInvestedKnown) * 100 : null;
+
+  // Same queryKey shape usePatrimoineRows already fetches entries under — hits the shared cache
+  // rather than firing new requests, just to tally fees across every account.
+  const entriesQueries = useQueries({
+    queries: (accounts ?? []).map((acc) => ({
+      queryKey: [...investmentsKey, acc.id, 'entries'],
+      queryFn: () => api.investments.entries(acc.id),
+      enabled: accounts !== undefined,
+    })),
+  });
+  const totalFees = entriesQueries.reduce(
+    (sum, q) => sum + (q.data ?? []).filter((e) => e.entryType === 'fee').reduce((s, e) => s + e.amountInvested, 0),
+    0,
+  );
 
   return (
     <div>
@@ -54,7 +70,7 @@ export function InvestmentsPage() {
       />
       <div className="space-y-6 p-8">
         {!patrimoine.isLoading && investmentRows.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className={`grid gap-4 ${totalFees > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
             <Card>
               <p className="text-sm text-text-secondary">Valeur actuelle</p>
               <p className="mt-1 font-mono text-hero font-bold tracking-[-0.03em] text-text-primary">
@@ -77,6 +93,12 @@ export function InvestmentsPage() {
                 )}
               </div>
             </Card>
+            {totalFees > 0 && (
+              <Card>
+                <p className="text-sm text-text-secondary">Frais prélevés (total)</p>
+                <p className="mt-1 font-mono text-lg font-semibold text-accent-3">{formatCents(totalFees)}</p>
+              </Card>
+            )}
           </div>
         )}
 

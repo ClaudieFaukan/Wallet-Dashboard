@@ -41,9 +41,10 @@ function buildHoldings(entries: InvestmentEntry[]): Holding[] {
       totalInvested: 0,
       totalDividends: 0,
     };
-    // Dividends aren't cost basis — kept out of "Investi"/gain, tallied separately.
+    // Dividends aren't cost basis — kept out of "Investi"/gain, tallied separately. Fees aren't
+    // cost basis either (already reflected in the account's manually-entered value) — ignored here.
     if (e.entryType === 'dividend') existing.totalDividends += e.amountInvested;
-    else existing.totalInvested += e.amountInvested;
+    else if (e.entryType === 'contribution') existing.totalInvested += e.amountInvested;
     if (e.assetType) existing.assetType = e.assetType;
     if (e.isin) existing.isin = e.isin;
     if (e.shares !== null) existing.totalShares = (existing.totalShares ?? 0) + e.shares;

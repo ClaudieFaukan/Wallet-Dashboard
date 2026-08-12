@@ -52,7 +52,13 @@ export function AddEntryDrawer({
           if (result.reachedMilestones.length > 0) {
             celebrate(result.reachedMilestones.map((m) => formatCents(m.amount)));
           } else {
-            toast.success(entryType === 'dividend' ? 'Dividende enregistré' : 'Entrée DCA enregistrée');
+            toast.success(
+              entryType === 'dividend'
+                ? 'Dividende enregistré'
+                : entryType === 'fee'
+                  ? 'Frais enregistré'
+                  : 'Entrée DCA enregistrée',
+            );
           }
           onClose();
         },

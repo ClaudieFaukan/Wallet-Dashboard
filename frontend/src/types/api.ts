@@ -228,7 +228,7 @@ export interface CreateInvestmentAccountInput {
 export type UpdateInvestmentAccountInput = Partial<CreateInvestmentAccountInput>;
 
 export type InvestmentAssetType = 'stock' | 'etf';
-export type InvestmentEntryType = 'contribution' | 'dividend';
+export type InvestmentEntryType = 'contribution' | 'dividend' | 'fee';
 
 export interface InvestmentEntry {
   id: string;

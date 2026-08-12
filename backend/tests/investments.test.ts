@@ -224,6 +224,17 @@ describe('investments module', () => {
           ticker: 'CS.PA',
         });
       expect(dividendRes.body.data.entry.entryType).toBe('dividend');
+
+      const feeRes = await agent
+        .post(`/api/v1/investments/${accountId}/entry`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          date: '2026-01-03',
+          amountInvested: 300,
+          portfolioValue: 10200,
+          entryType: 'fee',
+        });
+      expect(feeRes.body.data.entry.entryType).toBe('fee');
     });
   });
 

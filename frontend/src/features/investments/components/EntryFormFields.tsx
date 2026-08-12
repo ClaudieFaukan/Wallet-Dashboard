@@ -54,12 +54,15 @@ export function EntryFormFields({
       >
         <option value="contribution">Versement</option>
         <option value="dividend">Dividende reçu</option>
+        <option value="fee">Frais prélevé par le broker</option>
       </Select>
       <Input
         label={
           entryType === 'dividend'
             ? `Montant du dividende (${displayCurrency})`
-            : `Montant versé (${displayCurrency})`
+            : entryType === 'fee'
+              ? `Montant du frais (${displayCurrency})`
+              : `Montant versé (${displayCurrency})`
         }
         type="number"
         step="0.01"
@@ -69,6 +72,11 @@ export function EntryFormFields({
       {entryType === 'dividend' && (
         <p className="-mt-2 text-xs text-text-muted">
           Non compté dans le "Total investi" — visible séparément en "Dividendes reçus".
+        </p>
+      )}
+      {entryType === 'fee' && (
+        <p className="-mt-2 text-xs text-text-muted">
+          Non compté dans le "Total investi" — visible séparément en "Frais prélevés" et déduit de la performance.
         </p>
       )}
       <Input
