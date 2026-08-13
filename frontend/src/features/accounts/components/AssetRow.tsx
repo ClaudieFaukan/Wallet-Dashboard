@@ -1,6 +1,6 @@
-import { useRef, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Upload } from 'lucide-react';
+import { Pencil, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { Avatar } from '../../../components/ui/Avatar';
 import { Badge } from '../../../components/ui/Badge';
 import { Variation } from '../../../components/ui/Variation';
@@ -10,7 +10,8 @@ import { assetKindColors } from '../../../components/charts/chartTheme';
 import { getErrorMessage } from '../../../lib/api';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { PatrimoineRow } from '../../../hooks/usePatrimoineRows';
-import { useImportCsv, useSyncRevolut } from '../hooks/useAccounts';
+import { useDeleteAccount, useImportCsv, useSyncRevolut } from '../hooks/useAccounts';
+import { EditAccountDrawer } from './EditAccountDrawer';
 
 /** Bank-account-only quick actions (Revolut sync, CSV import), shown on
  * hover — the only asset kind these apply to. Kept inline here rather than
@@ -63,6 +64,50 @@ function AccountQuickActions({ accountId }: { accountId: string }) {
       >
         <Upload size={14} />
       </button>
+    </div>
+  );
+}
+
+/** Edit/delete for a bank account — the only asset kind editable directly from this table so
+ * far (investments/crypto/etc. have their own detail-page edit affordances). Direct deletion,
+ * no confirmation, consistent with the rest of the app (WalletCard, InvestmentAccountCard). */
+function AccountEditDeleteActions({ accountId }: { accountId: string }) {
+  const deleteAccount = useDeleteAccount();
+  const toast = useToast();
+  const [editOpen, setEditOpen] = useState(false);
+
+  function handleDelete(e: MouseEvent) {
+    e.stopPropagation();
+    deleteAccount.mutate(accountId, { onError: (err) => toast.error(getErrorMessage(err)) });
+  }
+
+  return (
+    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <button
+        type="button"
+        title="Éditer"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditOpen(true);
+        }}
+        className="rounded-md p-1.5 text-text-muted hover:bg-bg-surface hover:text-text-primary"
+      >
+        <Pencil size={14} />
+      </button>
+      <button
+        type="button"
+        title="Supprimer"
+        onClick={handleDelete}
+        disabled={deleteAccount.isPending}
+        className="rounded-md p-1.5 text-text-muted hover:bg-bg-surface hover:text-accent-3"
+      >
+        <Trash2 size={14} />
+      </button>
+      <EditAccountDrawer
+        accountId={editOpen ? accountId : null}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+      />
     </div>
   );
 }
@@ -123,8 +168,13 @@ export function AssetRow({ row }: { row: PatrimoineRow }) {
         )}
       </div>
 
-      <div className="w-[68px] shrink-0">
-        {row.kind === 'account' && <AccountQuickActions accountId={row.id} />}
+      <div className="flex w-32 shrink-0 justify-end gap-1">
+        {row.kind === 'account' && (
+          <>
+            <AccountQuickActions accountId={row.id} />
+            <AccountEditDeleteActions accountId={row.id} />
+          </>
+        )}
       </div>
     </div>
   );

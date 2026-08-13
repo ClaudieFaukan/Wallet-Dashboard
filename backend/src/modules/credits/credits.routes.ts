@@ -5,6 +5,7 @@ import { validate } from '../../shared/middleware/validate.middleware.js';
 import { CreditsController } from './credits.controller.js';
 import {
   createCreditSchema,
+  linkPaymentSchema,
   recordPaymentSchema,
   simulationQuerySchema,
   updateCreditSchema,
@@ -24,6 +25,13 @@ creditsRouter.patch('/:id', validate(updateCreditSchema), creditsController.upda
 creditsRouter.delete('/:id', creditsController.delete);
 creditsRouter.post('/:id/payments', validate(recordPaymentSchema), creditsController.recordPayment);
 creditsRouter.get('/:id/payments', creditsController.listPayments);
+creditsRouter.get('/:id/suggested-payments', creditsController.getSuggestedPayments);
+creditsRouter.post(
+  '/:id/payments/link',
+  validate(linkPaymentSchema),
+  creditsController.linkPayment,
+);
+creditsRouter.delete('/:id/payments/:paymentId', creditsController.unlinkPayment);
 creditsRouter.get(
   '/:id/simulation',
   validate(simulationQuerySchema, 'query'),

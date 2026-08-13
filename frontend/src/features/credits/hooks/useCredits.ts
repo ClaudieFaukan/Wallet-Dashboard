@@ -8,6 +8,14 @@ export function useCredits() {
   return useQuery({ queryKey: creditsKey, queryFn: api.credits.list });
 }
 
+export function useCredit(id: string) {
+  return useQuery({
+    queryKey: [...creditsKey, id],
+    queryFn: () => api.credits.getById(id),
+    enabled: id !== '',
+  });
+}
+
 export function useCreateCredit() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -38,6 +46,40 @@ export function useRecordCreditPayment() {
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: RecordCreditPaymentInput }) =>
       api.credits.recordPayment(id, input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: creditsKey }),
+  });
+}
+
+export function useCreditPayments(id: string) {
+  return useQuery({
+    queryKey: [...creditsKey, id, 'payments'],
+    queryFn: () => api.credits.payments(id),
+    enabled: id !== '',
+  });
+}
+
+export function useSuggestedPayments(id: string) {
+  return useQuery({
+    queryKey: [...creditsKey, id, 'suggested-payments'],
+    queryFn: () => api.credits.suggestedPayments(id),
+    enabled: id !== '',
+  });
+}
+
+export function useLinkPayment(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transactionId: string) => api.credits.linkPayment(id, transactionId),
+    // Invalidating the shared 'credits' prefix covers the list, this credit's detail, its
+    // payment history and its suggestions in one go (React Query matches by prefix).
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: creditsKey }),
+  });
+}
+
+export function useUnlinkPayment(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentId: string) => api.credits.unlinkPayment(id, paymentId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: creditsKey }),
   });
 }

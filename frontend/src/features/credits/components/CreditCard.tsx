@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Calculator, Pencil, Trash2 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
+import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { ProgressBar } from '../../../components/charts/ProgressBar';
 import { useToast } from '../../../components/ui/Toast';
@@ -8,7 +10,7 @@ import { getErrorMessage } from '../../../lib/api';
 import { formatDate, formatPercent } from '../../../lib/format';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { Credit } from '../../../types/api';
-import { useDeleteCredit } from '../hooks/useCredits';
+import { useDeleteCredit, useSuggestedPayments } from '../hooks/useCredits';
 import { EditCreditDrawer } from './EditCreditDrawer';
 import { RepaymentSimulatorDrawer } from './RepaymentSimulatorDrawer';
 
@@ -16,6 +18,7 @@ export function CreditCard({ credit }: { credit: Credit }) {
   const [editOpen, setEditOpen] = useState(false);
   const [simulateOpen, setSimulateOpen] = useState(false);
   const deleteCredit = useDeleteCredit();
+  const { data: suggestions } = useSuggestedPayments(credit.id);
   const toast = useToast();
   const { formatCents } = useFormatCurrency();
 
@@ -47,7 +50,20 @@ export function CreditCard({ credit }: { credit: Credit }) {
         </button>
       </div>
 
-      <p className="text-sm font-semibold text-text-primary">{credit.name}</p>
+      <div className="flex items-center gap-2">
+        <Link
+          to={`/credits/${credit.id}`}
+          className="truncate text-sm font-semibold text-text-primary hover:text-accent-gold"
+        >
+          {credit.name}
+        </Link>
+        {suggestions && suggestions.length > 0 && (
+          <Badge variant="accent">
+            {suggestions.length} paiement{suggestions.length > 1 ? 's' : ''} suggéré
+            {suggestions.length > 1 ? 's' : ''}
+          </Badge>
+        )}
+      </div>
       <p className="text-xs text-text-muted">{credit.institution}</p>
 
       <div className="mt-3 grid grid-cols-2 gap-3 text-sm">

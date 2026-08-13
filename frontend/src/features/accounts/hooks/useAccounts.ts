@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
-import type { CreateAccountInput, PdfImportMappingItem } from '../../../types/api';
+import type { CreateAccountInput, PdfImportMappingItem, UpdateAccountInput } from '../../../types/api';
 
 export const accountsKey = ['accounts'];
 
@@ -9,7 +9,11 @@ export function useAccounts() {
 }
 
 export function useAccount(id: string) {
-  return useQuery({ queryKey: [...accountsKey, id], queryFn: () => api.accounts.getById(id) });
+  return useQuery({
+    queryKey: [...accountsKey, id],
+    queryFn: () => api.accounts.getById(id),
+    enabled: id !== '',
+  });
 }
 
 export function useAccountBalanceHistory(id: string, days = 30) {
@@ -23,6 +27,14 @@ export function useCreateAccount() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateAccountInput) => api.accounts.create(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: accountsKey }),
+  });
+}
+
+export function useUpdateAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateAccountInput }) => api.accounts.update(id, input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: accountsKey }),
   });
 }

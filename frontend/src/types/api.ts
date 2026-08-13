@@ -378,11 +378,21 @@ export interface CreditPayment {
   amount: number;
   principalPart: number;
   interestPart: number;
+  transactionId: string | null;
 }
 
 export interface RecordCreditPaymentInput {
   date: string;
   amount: number;
+  principalPart: number;
+  interestPart: number;
+}
+
+export interface SuggestedCreditPayment {
+  transactionId: string;
+  date: string;
+  amount: number;
+  description: string | null;
   principalPart: number;
   interestPart: number;
 }

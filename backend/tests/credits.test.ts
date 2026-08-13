@@ -24,6 +24,22 @@ function addMonths(date: Date, months: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
 }
 
+async function createAccount(userId: string) {
+  const [account] = await db
+    .insert(schema.accounts)
+    .values({ userId, name: 'Compte courant', type: 'checking', balance: 0 })
+    .returning();
+  return account!;
+}
+
+async function createExpenseTransaction(accountId: string, amount: number, description: string, date: Date) {
+  const [txn] = await db
+    .insert(schema.transactions)
+    .values({ accountId, amount, type: 'expense', description, date })
+    .returning();
+  return txn!;
+}
+
 describe('credits module', () => {
   describe('CRUD', () => {
     it('creates, gets, updates and deletes a credit', async () => {
@@ -132,6 +148,144 @@ describe('credits module', () => {
         .set('Authorization', `Bearer ${accessToken}`);
       expect(listRes.status).toBe(200);
       expect(listRes.body.data).toHaveLength(1);
+    });
+  });
+
+  describe('suggested payments (transaction linking)', () => {
+    async function createCredit(agent: ReturnType<typeof request.agent>, accessToken: string) {
+      const today = new Date();
+      const res = await agent
+        .post('/api/v1/credits')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({
+          name: 'Prêt immobilier',
+          institution: 'Banque Populaire',
+          initialAmount: 1_000_000,
+          remainingAmount: 1_000_000,
+          monthlyPayment: 50_000,
+          interestRate: 0,
+          startDate: addMonths(today, -6).toISOString(),
+          endDate: addMonths(today, 200).toISOString(),
+        });
+      return res.body.data.id as string;
+    }
+
+    it('suggests transactions matching by amount or by institution keyword, ignores unrelated ones', async () => {
+      const { agent, accessToken, userId } = await registerAndGetToken();
+      const creditId = await createCredit(agent, accessToken);
+      const account = await createAccount(userId);
+      const today = new Date();
+
+      const amountMatch = await createExpenseTransaction(account.id, -50_000, 'PRLV DIVERS', today);
+      const keywordMatch = await createExpenseTransaction(
+        account.id,
+        -20_000, // doesn't match the amount at all — must match by keyword alone
+        'PRLV BANQUE POPULAIRE CREDIT',
+        today,
+      );
+      await createExpenseTransaction(account.id, -3_000, 'CARREFOUR MARKET', today);
+
+      const res = await agent
+        .get(`/api/v1/credits/${creditId}/suggested-payments`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.data.map((s: { transactionId: string }) => s.transactionId);
+      expect(ids).toContain(amountMatch.id);
+      expect(ids).toContain(keywordMatch.id);
+      expect(ids).toHaveLength(2);
+    });
+
+    it('does not suggest an unrelated transaction just because its amount is close (not exact)', async () => {
+      // Regression test for a real false positive found live: a 45,78€ phone bill and a 45,36€
+      // grocery purchase both matched a 45,59€ credit installment under a percentage tolerance,
+      // purely by coincidence. Amount matching must be exact.
+      const { agent, accessToken, userId } = await registerAndGetToken();
+      const creditId = await createCredit(agent, accessToken); // monthlyPayment: 50_000
+      const account = await createAccount(userId);
+      const today = new Date();
+
+      await createExpenseTransaction(account.id, -50_019, 'CB FREE MOBILE FACT', today);
+      await createExpenseTransaction(account.id, -49_977, 'CB LECLERC FACT', today);
+
+      const res = await agent
+        .get(`/api/v1/credits/${creditId}/suggested-payments`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).toHaveLength(0);
+    });
+
+    it('links a suggested payment, decreasing remainingAmount, and excludes it from future suggestions', async () => {
+      const { agent, accessToken, userId } = await registerAndGetToken();
+      const creditId = await createCredit(agent, accessToken);
+      const account = await createAccount(userId);
+      const txn = await createExpenseTransaction(account.id, -50_000, 'PRLV DIVERS', new Date());
+
+      const linkRes = await agent
+        .post(`/api/v1/credits/${creditId}/payments/link`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ transactionId: txn.id });
+
+      expect(linkRes.status).toBe(201);
+      expect(linkRes.body.data.payment.principalPart).toBe(50_000); // 0% interest
+      expect(linkRes.body.data.credit.remainingAmount).toBe(950_000);
+
+      const paymentsRes = await agent
+        .get(`/api/v1/credits/${creditId}/payments`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(paymentsRes.body.data).toHaveLength(1);
+      expect(paymentsRes.body.data[0].transactionId).toBe(txn.id);
+
+      const suggestedRes = await agent
+        .get(`/api/v1/credits/${creditId}/suggested-payments`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(suggestedRes.body.data).toHaveLength(0);
+    });
+
+    it('rejects linking a transaction that is already linked to a payment', async () => {
+      const { agent, accessToken, userId } = await registerAndGetToken();
+      const creditId = await createCredit(agent, accessToken);
+      const account = await createAccount(userId);
+      const txn = await createExpenseTransaction(account.id, -50_000, 'PRLV DIVERS', new Date());
+
+      await agent
+        .post(`/api/v1/credits/${creditId}/payments/link`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ transactionId: txn.id });
+
+      const secondLink = await agent
+        .post(`/api/v1/credits/${creditId}/payments/link`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ transactionId: txn.id });
+
+      expect(secondLink.status).toBe(409);
+    });
+
+    it('unlinking a payment restores the principal it had paid down', async () => {
+      const { agent, accessToken, userId } = await registerAndGetToken();
+      const creditId = await createCredit(agent, accessToken);
+      const account = await createAccount(userId);
+      const txn = await createExpenseTransaction(account.id, -50_000, 'PRLV DIVERS', new Date());
+
+      const linkRes = await agent
+        .post(`/api/v1/credits/${creditId}/payments/link`)
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ transactionId: txn.id });
+      const paymentId = linkRes.body.data.payment.id as string;
+      expect(linkRes.body.data.credit.remainingAmount).toBe(950_000);
+
+      const unlinkRes = await agent
+        .delete(`/api/v1/credits/${creditId}/payments/${paymentId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(unlinkRes.status).toBe(200);
+      expect(unlinkRes.body.data.remainingAmount).toBe(1_000_000);
+
+      const suggestedRes = await agent
+        .get(`/api/v1/credits/${creditId}/suggested-payments`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(suggestedRes.body.data).toHaveLength(1);
     });
   });
 

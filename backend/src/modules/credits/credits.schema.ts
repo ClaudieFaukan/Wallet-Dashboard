@@ -28,6 +28,11 @@ export const recordPaymentSchema = z.object({
 });
 export type RecordPaymentInput = z.infer<typeof recordPaymentSchema>;
 
+export const linkPaymentSchema = z.object({
+  transactionId: z.string().uuid(),
+});
+export type LinkPaymentInput = z.infer<typeof linkPaymentSchema>;
+
 export const simulationQuerySchema = z.object({
   earlyRepaymentDate: isoDate,
 });

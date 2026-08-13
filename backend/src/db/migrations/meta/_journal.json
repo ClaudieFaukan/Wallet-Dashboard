@@ -162,6 +162,13 @@
       "when": 1786540957876,
       "tag": "0022_add_account_number_savings_investments",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1786647680314,
+      "tag": "0023_add_credit_payment_transaction_link",
+      "breakpoints": true
     }
   ]
 }

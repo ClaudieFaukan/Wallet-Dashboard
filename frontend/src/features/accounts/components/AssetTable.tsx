@@ -153,7 +153,7 @@ export function AssetTable({ rows, isLoading }: { rows: PatrimoineRow[]; isLoadi
           onClick={() => toggleSort('ytdVariation')}
           className="w-32 shrink-0"
         />
-        <div className="w-[68px] shrink-0" />
+        <div className="w-32 shrink-0" />
       </div>
 
       {isLoading && <p className="py-6 text-center text-sm text-text-muted">Chargement…</p>}

@@ -29,6 +29,7 @@ import type {
   Credit,
   CreditPayment,
   CreditSimulation,
+  SuggestedCreditPayment,
   CryptoCostEntry,
   CryptoSnapshot,
   CryptoWallet,
@@ -399,6 +400,17 @@ export const api = {
       )),
     payments: (id: string) =>
       unwrap(client.get<ApiResponse<CreditPayment[]>>(`/credits/${id}/payments`)),
+    suggestedPayments: (id: string) =>
+      unwrap(client.get<ApiResponse<SuggestedCreditPayment[]>>(`/credits/${id}/suggested-payments`)),
+    linkPayment: (id: string, transactionId: string) =>
+      unwrap(
+        client.post<ApiResponse<{ payment: CreditPayment; credit: Credit }>>(
+          `/credits/${id}/payments/link`,
+          { transactionId },
+        ),
+      ),
+    unlinkPayment: (id: string, paymentId: string) =>
+      unwrap(client.delete<ApiResponse<Credit>>(`/credits/${id}/payments/${paymentId}`)),
     simulation: (id: string, earlyRepaymentDate: string) =>
       unwrap(
         client.get<ApiResponse<CreditSimulation>>(`/credits/${id}/simulation`, {

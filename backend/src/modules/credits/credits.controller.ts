@@ -2,6 +2,7 @@ import type { RequestHandler } from 'express';
 import type { AuthenticatedRequest } from '../../shared/middleware/auth.middleware.js';
 import type {
   CreateCreditInput,
+  LinkPaymentInput,
   RecordPaymentInput,
   SimulationQuery,
   UpdateCreditInput,
@@ -74,6 +75,48 @@ export class CreditsController {
         req.body as RecordPaymentInput,
       );
       res.status(201).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  getSuggestedPayments: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const suggestions = await this.creditsService.findSuggestedPayments(
+        user.id,
+        req.params.id as string,
+      );
+      res.json({ success: true, data: suggestions });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  linkPayment: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const { transactionId } = req.body as LinkPaymentInput;
+      const result = await this.creditsService.linkPayment(
+        user.id,
+        req.params.id as string,
+        transactionId,
+      );
+      res.status(201).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  unlinkPayment: RequestHandler = async (req, res, next) => {
+    try {
+      const { user } = req as AuthenticatedRequest;
+      const credit = await this.creditsService.unlinkPayment(
+        user.id,
+        req.params.id as string,
+        req.params.paymentId as string,
+      );
+      res.json({ success: true, data: credit });
     } catch (err) {
       next(err);
     }

@@ -19,7 +19,9 @@ export function AccountDetailPage() {
 
   return (
     <div>
-      <Header title={account?.name ?? 'Compte'} />
+      <Header title={account?.name ?? 'Compte'}
+      backTo={`/accounts`}
+      />
       <div className="space-y-6 p-8">
         {account && (
           <Card>
