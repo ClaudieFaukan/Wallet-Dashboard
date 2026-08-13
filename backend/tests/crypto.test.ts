@@ -802,6 +802,76 @@ describe('crypto module', () => {
       expect(symbols).toContain('BNB');
     });
 
+    it('does not surface a failure note when BNB Chain is rejected by the Etherscan plan (free tier)', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'MetaMask', platform: 'metamask', address: '0xSomeAddr', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ etherscanApiKey: 'test-etherscan-key' });
+
+      // Verified live against a real free-tier Etherscan key: every non-mainnet chainid request
+      // (balance and tokentx alike) comes back with this exact response, permanently — not a
+      // transient rate limit.
+      const unsupportedChainResponse = {
+        status: '0',
+        message: 'NOTOK',
+        result: 'Free API access is not supported for this chain. Please upgrade your api plan for full chain coverage. https://etherscan.io/apis',
+      };
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string | URL) => {
+          const urlStr = String(url);
+          if (urlStr.includes('chainid=56')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(unsupportedChainResponse) });
+          }
+          if (urlStr.includes('action=balance')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({ status: '1', message: 'OK', result: '2000000000000000000' }), // 2 ETH
+            });
+          }
+          if (urlStr.includes('action=tokentx')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ status: '0', message: 'No transactions found', result: [] }),
+            });
+          }
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve([{ id: 'ethereum', symbol: 'eth', name: 'Ethereum' }]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum', image: 'eth.png', current_price: 3000, price_change_percentage_24h: 1 },
+                ]),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.note).toBeNull();
+      expect(tokensRes.body.data.tokens.map((t: { symbol: string }) => t.symbol)).toEqual(['ETH']);
+    });
+
     it("includes the native SOL balance in a Phantom wallet's token list even with no SPL tokens", async () => {
       const { agent, accessToken } = await registerAndGetToken();
       const createRes = await agent
