@@ -1,10 +1,28 @@
 // Etherscan account balance API (V2 — the V1 endpoint used at scaffold time
 // was deprecated and returns "NOTOK: deprecated V1 endpoint" as of 2026;
-// V2 requires a chainid query param, 1 = Ethereum mainnet). Verified live
-// against a real API key and a known public address.
+// V2 requires a chainid query param). Verified live against a real API key
+// and a known public address.
+//
+// Etherscan V2 is a unified multi-chain API — the same key works across EVM chains just by
+// changing chainid, which is why every function here takes one instead of hardcoding Ethereum
+// mainnet. Added to cover BNB Chain (a real MetaMask wallet's assets are commonly split across
+// both, verified against the user's own wallet — Ethereum mainnet alone undercounted the total
+// shown in the real MetaMask app).
 
 const WEI_PER_ETH = 1_000_000_000_000_000_000n;
-const ETHEREUM_MAINNET_CHAIN_ID = '1';
+export const ETHEREUM_MAINNET_CHAIN_ID = '1';
+export const BNB_CHAIN_ID = '56';
+
+/** Thrown when Etherscan rejects a chain outright because the caller's plan doesn't cover it —
+ * verified live: a free-tier key gets `{status:'0', result:"Free API access is not supported for
+ * this chain. Please upgrade your api plan..."}` for chainid=56 (BNB Chain), on every single
+ * call, permanently (not a transient rate limit). Callers should treat this as "this chain isn't
+ * available right now" rather than a real failure worth alarming the user about. */
+export class EtherscanUnsupportedChainError extends Error {}
+
+function isUnsupportedChainMessage(message: string): boolean {
+  return message.toLowerCase().includes('not supported for this chain');
+}
 
 interface EtherscanBalanceResponse {
   status: string;
@@ -12,9 +30,13 @@ interface EtherscanBalanceResponse {
   result: string;
 }
 
-export async function getEthBalanceWei(address: string, apiKey: string): Promise<bigint> {
+export async function getEthBalanceWei(
+  address: string,
+  apiKey: string,
+  chainId: string = ETHEREUM_MAINNET_CHAIN_ID,
+): Promise<bigint> {
   const url = new URL('https://api.etherscan.io/v2/api');
-  url.searchParams.set('chainid', ETHEREUM_MAINNET_CHAIN_ID);
+  url.searchParams.set('chainid', chainId);
   url.searchParams.set('module', 'account');
   url.searchParams.set('action', 'balance');
   url.searchParams.set('address', address);
@@ -28,6 +50,9 @@ export async function getEthBalanceWei(address: string, apiKey: string): Promise
 
   const data = (await response.json()) as EtherscanBalanceResponse;
   if (data.status !== '1') {
+    if (isUnsupportedChainMessage(data.result)) {
+      throw new EtherscanUnsupportedChainError(data.result);
+    }
     throw new Error(`Etherscan error: ${data.message}`);
   }
 
@@ -65,9 +90,10 @@ export interface Erc20ContractInfo {
 export async function getErc20ContractsTouched(
   address: string,
   apiKey: string,
+  chainId: string = ETHEREUM_MAINNET_CHAIN_ID,
 ): Promise<Erc20ContractInfo[]> {
   const url = new URL('https://api.etherscan.io/v2/api');
-  url.searchParams.set('chainid', ETHEREUM_MAINNET_CHAIN_ID);
+  url.searchParams.set('chainid', chainId);
   url.searchParams.set('module', 'account');
   url.searchParams.set('action', 'tokentx');
   url.searchParams.set('address', address);
@@ -83,6 +109,9 @@ export async function getErc20ContractsTouched(
   if (data.status !== '1' || typeof data.result === 'string') {
     // "No transactions found" comes back as status "0" — not an error, just empty.
     if (data.message === 'No transactions found') return [];
+    if (typeof data.result === 'string' && isUnsupportedChainMessage(data.result)) {
+      throw new EtherscanUnsupportedChainError(data.result);
+    }
     throw new Error(`Etherscan error: ${data.message}`);
   }
 
@@ -111,9 +140,10 @@ export async function getErc20Balance(
   address: string,
   contractAddress: string,
   apiKey: string,
+  chainId: string = ETHEREUM_MAINNET_CHAIN_ID,
 ): Promise<bigint> {
   const url = new URL('https://api.etherscan.io/v2/api');
-  url.searchParams.set('chainid', ETHEREUM_MAINNET_CHAIN_ID);
+  url.searchParams.set('chainid', chainId);
   url.searchParams.set('module', 'account');
   url.searchParams.set('action', 'tokenbalance');
   url.searchParams.set('contractaddress', contractAddress);

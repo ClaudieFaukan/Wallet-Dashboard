@@ -36,7 +36,7 @@ interface CoinGeckoTokenPriceResponse {
  * that token), rather than letting one bad/rate-limited address take down every other token's
  * price. */
 export async function getTokenPricesUsd(
-  platform: 'ethereum' | 'solana',
+  platform: 'ethereum' | 'solana' | 'binance-smart-chain',
   contractAddresses: string[],
   apiKey?: string,
 ): Promise<Record<string, TokenPrice>> {
@@ -169,6 +169,7 @@ const KNOWN_SYMBOL_OVERRIDES: Record<string, string> = {
   BTC: 'bitcoin',
   ETH: 'ethereum',
   SOL: 'solana',
+  BNB: 'binancecoin',
 };
 
 /** Resolves ticker symbols (e.g. "BTC", "eth") to CoinGecko coin ids. Symbols with no match

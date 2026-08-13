@@ -735,6 +735,73 @@ describe('crypto module', () => {
       expect(syncRes.body.data.totalValueUsd).toBe(600000);
     });
 
+    it('aggregates BNB Chain holdings alongside Ethereum mainnet for a MetaMask wallet', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'MetaMask', platform: 'metamask', address: '0xSomeAddr', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ etherscanApiKey: 'test-etherscan-key' });
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string | URL) => {
+          const urlStr = String(url);
+          // Etherscan V2 is a single unified endpoint — chainid is the only thing that
+          // distinguishes an Ethereum mainnet request from a BNB Chain one.
+          if (urlStr.includes('action=balance')) {
+            const wei = urlStr.includes('chainid=56') ? '1000000000000000000' : '2000000000000000000'; // 1 BNB / 2 ETH
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ status: '1', message: 'OK', result: wei }) });
+          }
+          if (urlStr.includes('action=tokentx')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ status: '0', message: 'No transactions found', result: [] }),
+            });
+          }
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'binancecoin', symbol: 'bnb', name: 'BNB' },
+                ]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            const ids = new URL(urlStr).searchParams.get('ids');
+            const entries =
+              ids === 'binancecoin'
+                ? [{ id: 'binancecoin', symbol: 'bnb', name: 'BNB', image: 'bnb.png', current_price: 500, price_change_percentage_24h: 1 }]
+                : [{ id: 'ethereum', symbol: 'eth', name: 'Ethereum', image: 'eth.png', current_price: 3000, price_change_percentage_24h: 1 }];
+            return Promise.resolve({ ok: true, json: () => Promise.resolve(entries) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const syncRes = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(syncRes.status).toBe(200);
+      // (2 ETH * $3000) + (1 BNB * $500) = $6500 = 650000 cents
+      expect(syncRes.body.data.totalValueUsd).toBe(650000);
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      const symbols = tokensRes.body.data.tokens.map((t: { symbol: string }) => t.symbol);
+      expect(symbols).toContain('ETH');
+      expect(symbols).toContain('BNB');
+    });
+
     it("includes the native SOL balance in a Phantom wallet's token list even with no SPL tokens", async () => {
       const { agent, accessToken } = await registerAndGetToken();
       const createRes = await agent
@@ -801,12 +868,18 @@ describe('crypto module', () => {
         'fetch',
         vi.fn((url: string | URL) => {
           const urlStr = String(url);
+          // MetaMask now also queries BNB Chain (chainid=56) alongside Ethereum mainnet
+          // (chainid=1) — this wallet holds nothing there, so chainid=56 gets a zero balance.
           if (urlStr.includes('action=balance')) {
+            const isMainnet = urlStr.includes('chainid=1');
             return Promise.resolve({
               ok: true,
-              // 2 ETH
               json: () =>
-                Promise.resolve({ status: '1', message: 'OK', result: '2000000000000000000' }),
+                Promise.resolve({
+                  status: '1',
+                  message: 'OK',
+                  result: isMainnet ? '2000000000000000000' : '0', // 2 ETH on mainnet, nothing on BNB Chain
+                }),
             });
           }
           if (urlStr.includes('action=tokentx')) {

@@ -4,6 +4,9 @@ import * as schema from '../../db/schema/index.js';
 import { env } from '../../config/env.js';
 import type { SettingsService } from '../settings/settings.service.js';
 import {
+  BNB_CHAIN_ID,
+  ETHEREUM_MAINNET_CHAIN_ID,
+  EtherscanUnsupportedChainError,
   type Erc20ContractInfo,
   getErc20Balance,
   getErc20ContractsTouched,
@@ -342,40 +345,83 @@ export class CryptoService {
     };
   }
 
+  // A MetaMask wallet's assets are commonly split across multiple EVM chains under the same
+  // address — verified against the user's real wallet: Ethereum mainnet alone undercounted the
+  // total shown in the real MetaMask app, which also lists BNB Chain holdings. Etherscan V2 is a
+  // unified multi-chain API (same key, different chainid), so both chains are queried and their
+  // token lists merged into one.
   private async getEthereumTokens(
     address: string,
     apiKey: string,
     coingeckoApiKey?: string,
   ): Promise<{ tokens: WalletToken[]; note: string | null }> {
-    // Native balance is fetched in addition to the ERC20 list (added after that list was
+    const [ethereum, bnb] = await Promise.all([
+      this.getEvmChainTokens(
+        ETHEREUM_MAINNET_CHAIN_ID,
+        'ETH',
+        'ethereum',
+        address,
+        apiKey,
+        coingeckoApiKey,
+      ),
+      this.getEvmChainTokens(BNB_CHAIN_ID, 'BNB', 'binance-smart-chain', address, apiKey, coingeckoApiKey),
+    ]);
+
+    return {
+      tokens: [...ethereum.tokens, ...bnb.tokens],
+      note:
+        ethereum.failed || bnb.failed
+          ? "Impossible de récupérer la liste complète des tokens pour le moment (Etherscan indisponible ou limité) — réessayez plus tard."
+          : null,
+    };
+  }
+
+  private async getEvmChainTokens(
+    chainId: string,
+    nativeSymbol: string,
+    coingeckoPlatform: 'ethereum' | 'binance-smart-chain',
+    address: string,
+    apiKey: string,
+    coingeckoApiKey?: string,
+  ): Promise<{ tokens: WalletToken[]; failed: boolean }> {
+    // Native balance is fetched in addition to the ERC20/BEP20 list (added after that list was
     // already working) — a failure here (bad address, Etherscan hiccup) must not 500 the whole
     // token list, so it's caught and simply omits the native row rather than propagating.
-    // The ERC20 contract list itself is guarded the same way (Etherscan's free tier does rate-
-    // limit): a failure there degrades to an empty list + explanatory note instead of a 500,
-    // rather than losing the native row too on a call that's otherwise unrelated to it.
+    // The contract list itself is guarded the same way (Etherscan's free tier does rate-limit):
+    // a failure there degrades to an empty list + explanatory note instead of a 500, rather than
+    // losing the native row too on a call that's otherwise unrelated to it. EtherscanUnsupportedChainError
+    // is treated as a silent skip rather than a failure worth a note — verified live: Etherscan's
+    // free plan rejects every non-mainnet chain (BNB Chain included) permanently, so surfacing
+    // that as "réessayez plus tard" would be actively misleading (it will never succeed on this
+    // plan) and would show on every single sync/fetch for a MetaMask wallet.
     const [wei, contractsResult] = await Promise.all([
-      getEthBalanceWei(address, apiKey).catch(() => 0n),
-      getErc20ContractsTouched(address, apiKey)
+      getEthBalanceWei(address, apiKey, chainId).catch(() => 0n),
+      getErc20ContractsTouched(address, apiKey, chainId)
         .then((contracts) => ({ contracts, failed: false as const }))
-        .catch(() => ({ contracts: [] as Erc20ContractInfo[], failed: true as const })),
+        .catch((err) => ({
+          contracts: [] as Erc20ContractInfo[],
+          failed: !(err instanceof EtherscanUnsupportedChainError),
+        })),
     ]);
     const nativeAmount = weiToEth(wei);
     const contracts = contractsResult.contracts;
 
     const [nativeMarketData, prices] = await Promise.all([
       nativeAmount > 0
-        ? getMarketDataBySymbol(['ETH'], coingeckoApiKey).catch(() => new Map<string, CoinMarketData>())
+        ? getMarketDataBySymbol([nativeSymbol], coingeckoApiKey).catch(
+            () => new Map<string, CoinMarketData>(),
+          )
         : Promise.resolve(new Map<string, CoinMarketData>()),
       contracts.length > 0
         ? getTokenPricesUsd(
-            'ethereum',
+            coingeckoPlatform,
             contracts.map((c) => c.contractAddress),
             coingeckoApiKey,
           )
         : Promise.resolve<Record<string, TokenPrice>>({}),
     ]);
 
-    const erc20Tokens = await Promise.all(
+    const chainTokens = await Promise.all(
       contracts.map(async (c): Promise<WalletToken | null> => {
         // Same reasoning as the contract-list/native-balance calls above: one contract's
         // balance call failing (Etherscan rate limit on that single request) must not take
@@ -383,7 +429,7 @@ export class CryptoService {
         // the whole Promise.all.
         let raw: bigint;
         try {
-          raw = await getErc20Balance(address, c.contractAddress, apiKey);
+          raw = await getErc20Balance(address, c.contractAddress, apiKey, chainId);
         } catch {
           return null;
         }
@@ -402,14 +448,9 @@ export class CryptoService {
       }),
     );
 
-    const tokens = erc20Tokens.filter((t): t is WalletToken => t !== null);
-    if (nativeAmount > 0) tokens.unshift(this.buildNativeToken('ETH', nativeAmount, nativeMarketData));
-    return {
-      tokens,
-      note: contractsResult.failed
-        ? "Impossible de récupérer la liste des tokens ERC20 pour le moment (Etherscan indisponible ou limité) — réessayez plus tard."
-        : null,
-    };
+    const tokens = chainTokens.filter((t): t is WalletToken => t !== null);
+    if (nativeAmount > 0) tokens.unshift(this.buildNativeToken(nativeSymbol, nativeAmount, nativeMarketData));
+    return { tokens, failed: contractsResult.failed };
   }
 
   private async getSolanaTokens(
