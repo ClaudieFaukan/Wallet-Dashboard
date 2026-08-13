@@ -93,10 +93,11 @@ export class CryptoService {
 
   async sync(userId: string, id: string) {
     const wallet = await this.getById(userId, id);
+    const coingeckoApiKey = await this.getCoingeckoApiKey(userId);
 
     switch (wallet.platform) {
       case 'phantom':
-        return this.syncSolana(wallet);
+        return this.syncSolana(wallet, coingeckoApiKey);
       case 'metamask': {
         const apiKey = await this.settingsService.getValue(userId, 'etherscanApiKey');
         if (!apiKey) {
@@ -106,7 +107,7 @@ export class CryptoService {
             'Etherscan sync is not configured yet',
           );
         }
-        return this.syncEthereum(wallet, apiKey);
+        return this.syncEthereum(wallet, apiKey, coingeckoApiKey);
       }
       case 'crypto_com': {
         const keys = await this.requireExchangeKeys(
@@ -134,9 +135,13 @@ export class CryptoService {
         if (!apiKey) {
           throw new AppError(501, 'MERIA_NOT_CONFIGURED', 'Meria sync is not configured yet');
         }
-        return this.syncMeria(wallet, apiKey);
+        return this.syncMeria(wallet, apiKey, coingeckoApiKey);
       }
     }
+  }
+
+  private async getCoingeckoApiKey(userId: string): Promise<string | undefined> {
+    return (await this.settingsService.getValue(userId, 'coingeckoApiKey')) ?? undefined;
   }
 
   async history(userId: string, id: string) {
@@ -150,13 +155,80 @@ export class CryptoService {
 
   async getTokens(userId: string, id: string): Promise<{ tokens: WalletToken[]; note: string | null }> {
     const wallet = await this.getById(userId, id);
-    const result = await this.getTokensForWallet(userId, wallet);
-    return { tokens: await this.enrichTokenMeta(result.tokens), note: result.note };
+    const coingeckoApiKey = await this.getCoingeckoApiKey(userId);
+    const result = await this.getTokensForWallet(userId, wallet, coingeckoApiKey);
+    const tokens = await this.enrichTokenMeta(result.tokens, coingeckoApiKey);
+
+    if (this.pricingLooksReliable(tokens)) {
+      return { tokens, note: result.note };
+    }
+
+    // Every token came back with no price at all — almost always CoinGecko's free tier
+    // rate limit collapsing pricing for the whole request, not a wallet that genuinely holds
+    // only unpriced tokens (verified live: reproducible during a rate-limited window). Showing
+    // that as a blank list looks like the wallet lost its holdings. Fall back to the last
+    // successful sync's stored snapshot (real prices, just not live) instead of nothing.
+    const fallback = await this.getLastSnapshotTokens(id);
+    if (fallback) {
+      return {
+        tokens: fallback.tokens,
+        note: `Données de la dernière synchronisation (${fallback.fetchedAt.toLocaleString('fr-FR')}) — l'API de prix CoinGecko a atteint sa limite de requêtes, impossible de récupérer les cours en direct pour le moment. Réessayez dans quelques minutes, ou ajoutez une clé API CoinGecko dans Réglages pour augmenter cette limite.`,
+      };
+    }
+
+    return {
+      tokens,
+      note: "Impossible de récupérer les cours pour le moment : l'API de prix CoinGecko a atteint sa limite de requêtes. Réessayez dans quelques minutes, ou ajoutez une clé API CoinGecko dans Réglages pour augmenter cette limite.",
+    };
+  }
+
+  /** True unless every token resolved with no price at all — the signal used to detect that
+   * CoinGecko pricing collapsed for the whole request (see getTokens/writeSnapshot) rather
+   * than treating a handful of individually-unpriced illiquid tokens as a failure. */
+  private pricingLooksReliable(tokens: WalletToken[]): boolean {
+    return tokens.length === 0 || tokens.some((t) => t.priceUsd !== null);
+  }
+
+  private async getLastSnapshotTokens(
+    walletId: string,
+  ): Promise<{ tokens: WalletToken[]; fetchedAt: Date } | null> {
+    const [snapshot] = await this.db
+      .select()
+      .from(schema.cryptoSnapshots)
+      .where(eq(schema.cryptoSnapshots.walletId, walletId))
+      .orderBy(desc(schema.cryptoSnapshots.fetchedAt))
+      .limit(1);
+    if (!snapshot) return null;
+    const rawData = snapshot.rawData as { tokens?: WalletToken[] } | null;
+    if (!rawData?.tokens) return null;
+    return { tokens: rawData.tokens, fetchedAt: snapshot.fetchedAt };
+  }
+
+  /** Inserts a sync snapshot — unless pricing has collapsed for every token, in which case
+   * writing the total anyway would silently overwrite a correct previous total with ~0 (every
+   * valueUsdCents is null, so the sum is 0), which looks like the wallet's balance vanished.
+   * Refuses instead, with a message specific enough that the user can act on it (retry later,
+   * or upgrade the CoinGecko plan) rather than a generic failure. */
+  private async writeSnapshot(walletId: string, tokens: WalletToken[]) {
+    if (!this.pricingLooksReliable(tokens)) {
+      throw new AppError(
+        503,
+        'COINGECKO_RATE_LIMITED',
+        "Synchronisation impossible : l'API de prix CoinGecko a atteint sa limite de requêtes et ne renvoie plus aucun cours pour le moment. Le dernier montant connu reste affiché — réessayez dans quelques minutes, ou ajoutez une clé API CoinGecko dans Réglages pour augmenter cette limite.",
+      );
+    }
+    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
+    const [snapshot] = await this.db
+      .insert(schema.cryptoSnapshots)
+      .values({ walletId, totalValueUsd, rawData: { tokens } })
+      .returning();
+    return snapshot;
   }
 
   private async getTokensForWallet(
     userId: string,
     wallet: CryptoWallet,
+    coingeckoApiKey?: string,
   ): Promise<{ tokens: WalletToken[]; note: string | null }> {
     switch (wallet.platform) {
       case 'metamask': {
@@ -164,10 +236,10 @@ export class CryptoService {
         if (!apiKey) {
           throw new AppError(501, 'ETHERSCAN_NOT_CONFIGURED', 'Etherscan sync is not configured yet');
         }
-        return this.getEthereumTokens(wallet.address, apiKey);
+        return this.getEthereumTokens(wallet.address, apiKey, coingeckoApiKey);
       }
       case 'phantom':
-        return this.getSolanaTokens(wallet.address);
+        return this.getSolanaTokens(wallet.address, coingeckoApiKey);
       case 'crypto_com': {
         const keys = await this.requireExchangeKeys(
           userId,
@@ -175,7 +247,10 @@ export class CryptoService {
           'cryptoComApiSecret',
           'CRYPTO_COM',
         );
-        return { tokens: await this.getCryptoComTokens(keys.apiKey, keys.apiSecret), note: null };
+        return {
+          tokens: await this.getCryptoComTokens(keys.apiKey, keys.apiSecret, coingeckoApiKey),
+          note: null,
+        };
       }
       case 'binance': {
         const keys = await this.requireExchangeKeys(userId, 'binanceApiKey', 'binanceApiSecret', 'BINANCE');
@@ -194,7 +269,7 @@ export class CryptoService {
         if (!apiKey) {
           throw new AppError(501, 'MERIA_NOT_CONFIGURED', 'Meria sync is not configured yet');
         }
-        return { tokens: await this.getMeriaTokens(apiKey), note: null };
+        return { tokens: await this.getMeriaTokens(apiKey, coingeckoApiKey), note: null };
       }
     }
   }
@@ -203,14 +278,19 @@ export class CryptoService {
    * Bybit, on-chain ERC20s), via a single batched CoinGecko lookup keyed by ticker symbol.
    * Symbols CoinGecko doesn't recognize (e.g. truncated Solana mint addresses used as a
    * placeholder when no name is known) are simply left as-is — no logo, initials fallback. */
-  private async enrichTokenMeta(tokens: WalletToken[]): Promise<WalletToken[]> {
+  private async enrichTokenMeta(
+    tokens: WalletToken[],
+    coingeckoApiKey?: string,
+  ): Promise<WalletToken[]> {
     const missing = tokens.filter((t) => t.logoUrl === null).map((t) => t.symbol);
     if (missing.length === 0) return tokens;
 
     // Purely cosmetic enrichment (logo/name) — a CoinGecko failure here (rate limit is common,
     // this fires on every wallet with unresolved symbols, e.g. every SPL mint prefix on a
     // Phantom wallet) must not 500 the whole token list over a missing logo.
-    const marketData = await getMarketDataBySymbol(missing).catch(() => new Map<string, CoinMarketData>());
+    const marketData = await getMarketDataBySymbol(missing, coingeckoApiKey).catch(
+      () => new Map<string, CoinMarketData>(),
+    );
     if (marketData.size === 0) return tokens;
 
     return tokens.map((t) => {
@@ -264,6 +344,7 @@ export class CryptoService {
   private async getEthereumTokens(
     address: string,
     apiKey: string,
+    coingeckoApiKey?: string,
   ): Promise<{ tokens: WalletToken[]; note: string | null }> {
     // Native balance is fetched in addition to the ERC20 list (added after that list was
     // already working) — a failure here (bad address, Etherscan hiccup) must not 500 the whole
@@ -282,19 +363,29 @@ export class CryptoService {
 
     const [nativeMarketData, prices] = await Promise.all([
       nativeAmount > 0
-        ? getMarketDataBySymbol(['ETH']).catch(() => new Map<string, CoinMarketData>())
+        ? getMarketDataBySymbol(['ETH'], coingeckoApiKey).catch(() => new Map<string, CoinMarketData>())
         : Promise.resolve(new Map<string, CoinMarketData>()),
       contracts.length > 0
         ? getTokenPricesUsd(
             'ethereum',
             contracts.map((c) => c.contractAddress),
+            coingeckoApiKey,
           )
         : Promise.resolve<Record<string, TokenPrice>>({}),
     ]);
 
     const erc20Tokens = await Promise.all(
       contracts.map(async (c): Promise<WalletToken | null> => {
-        const raw = await getErc20Balance(address, c.contractAddress, apiKey);
+        // Same reasoning as the contract-list/native-balance calls above: one contract's
+        // balance call failing (Etherscan rate limit on that single request) must not take
+        // down every other already-resolved token — skip just this one instead of rejecting
+        // the whole Promise.all.
+        let raw: bigint;
+        try {
+          raw = await getErc20Balance(address, c.contractAddress, apiKey);
+        } catch {
+          return null;
+        }
         const amount = Number(raw) / 10 ** c.tokenDecimal;
         if (amount <= 0) return null;
         const price = prices[c.contractAddress.toLowerCase()];
@@ -320,7 +411,10 @@ export class CryptoService {
     };
   }
 
-  private async getSolanaTokens(address: string): Promise<{ tokens: WalletToken[]; note: string | null }> {
+  private async getSolanaTokens(
+    address: string,
+    coingeckoApiKey?: string,
+  ): Promise<{ tokens: WalletToken[]; note: string | null }> {
     // Same reasoning as getEthereumTokens: don't let a native-balance failure (invalid address,
     // RPC hiccup) take down the SPL token list, and don't let the SPL list itself (Solana's
     // public RPC is easily rate-limited, verified live: repeated calls return 429/error on
@@ -336,12 +430,13 @@ export class CryptoService {
 
     const [nativeMarketData, prices] = await Promise.all([
       nativeAmount > 0
-        ? getMarketDataBySymbol(['SOL']).catch(() => new Map<string, CoinMarketData>())
+        ? getMarketDataBySymbol(['SOL'], coingeckoApiKey).catch(() => new Map<string, CoinMarketData>())
         : Promise.resolve(new Map<string, CoinMarketData>()),
       accounts.length > 0
         ? getTokenPricesUsd(
             'solana',
             accounts.map((a) => a.mint),
+            coingeckoApiKey,
           )
         : Promise.resolve<Record<string, TokenPrice>>({}),
     ]);
@@ -384,34 +479,30 @@ export class CryptoService {
     };
   }
 
-  private async syncEthereum(wallet: CryptoWallet, apiKey: string) {
+  private async syncEthereum(wallet: CryptoWallet, apiKey: string, coingeckoApiKey?: string) {
     // Previously only counted the native ETH balance, silently ignoring any ERC20 tokens held —
     // undercounted the real wallet value (and therefore the patrimoine total) for any wallet
     // holding tokens beyond native ETH. Reuses getEthereumTokens (same source as "Tokens
     // détenus") so the stored total and the displayed token list always agree.
-    const { tokens } = await this.getEthereumTokens(wallet.address, apiKey);
-    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
-
-    const [snapshot] = await this.db
-      .insert(schema.cryptoSnapshots)
-      .values({
-        walletId: wallet.id,
-        totalValueUsd,
-        rawData: { tokens },
-      })
-      .returning();
-
-    return snapshot;
+    const { tokens } = await this.getEthereumTokens(wallet.address, apiKey, coingeckoApiKey);
+    return this.writeSnapshot(wallet.id, tokens);
   }
 
   // Priced via CoinGecko rather than a Crypto.com field: `position_balances` entries beyond
   // `instrument_name`/`quantity` are unconfirmed against a real non-empty response (see the
   // root-cause note in cryptocom.client.ts), so we only trust the two field names we're sure of.
-  private async getCryptoComTokens(apiKey: string, apiSecret: string): Promise<WalletToken[]> {
+  private async getCryptoComTokens(
+    apiKey: string,
+    apiSecret: string,
+    coingeckoApiKey?: string,
+  ): Promise<WalletToken[]> {
     const balance = await getUserBalance(apiKey, apiSecret);
     if (balance.position_balances.length === 0) return [];
 
-    const prices = await getMarketDataBySymbol(balance.position_balances.map((p) => p.instrument_name));
+    const prices = await getMarketDataBySymbol(
+      balance.position_balances.map((p) => p.instrument_name),
+      coingeckoApiKey,
+    );
 
     return balance.position_balances
       .map((p): WalletToken | null => {
@@ -477,52 +568,32 @@ export class CryptoService {
 
   private async syncBinance(wallet: CryptoWallet, apiKey: string, apiSecret: string) {
     const tokens = await this.getBinanceTokens(apiKey, apiSecret);
-    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
-
-    const [snapshot] = await this.db
-      .insert(schema.cryptoSnapshots)
-      .values({ walletId: wallet.id, totalValueUsd, rawData: { tokens } })
-      .returning();
-    return snapshot;
+    return this.writeSnapshot(wallet.id, tokens);
   }
 
   private async syncBybit(wallet: CryptoWallet, apiKey: string, apiSecret: string) {
     const tokens = await this.getBybitTokens(apiKey, apiSecret);
-    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
-
-    const [snapshot] = await this.db
-      .insert(schema.cryptoSnapshots)
-      .values({ walletId: wallet.id, totalValueUsd, rawData: { tokens } })
-      .returning();
-    return snapshot;
+    return this.writeSnapshot(wallet.id, tokens);
   }
 
-  private async syncSolana(wallet: CryptoWallet) {
+  private async syncSolana(wallet: CryptoWallet, coingeckoApiKey?: string) {
     // Same reasoning as syncEthereum: reuse getSolanaTokens (native SOL + spam-filtered SPL
     // tokens) rather than pricing native SOL alone, so the stored total matches what "Tokens
     // détenus" actually shows instead of undercounting SPL holdings.
-    const { tokens } = await this.getSolanaTokens(wallet.address);
-    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
-
-    const [snapshot] = await this.db
-      .insert(schema.cryptoSnapshots)
-      .values({
-        walletId: wallet.id,
-        totalValueUsd,
-        rawData: { tokens },
-      })
-      .returning();
-
-    return snapshot;
+    const { tokens } = await this.getSolanaTokens(wallet.address, coingeckoApiKey);
+    return this.writeSnapshot(wallet.id, tokens);
   }
 
   // Meria (mymeria.fr) is a custodial platform like Binance/Bybit — it only reports currency
   // codes + balances, no price, so pricing/name/logo comes from CoinGecko in one batched call.
-  private async getMeriaTokens(apiKey: string): Promise<WalletToken[]> {
+  private async getMeriaTokens(apiKey: string, coingeckoApiKey?: string): Promise<WalletToken[]> {
     const wallets = await getMeriaWallets(apiKey);
     if (wallets.length === 0) return [];
 
-    const marketData = await getMarketDataBySymbol(wallets.map((w) => w.currencyCode));
+    const marketData = await getMarketDataBySymbol(
+      wallets.map((w) => w.currencyCode),
+      coingeckoApiKey,
+    );
 
     return wallets.map((w): WalletToken => {
       const data = marketData.get(w.currencyCode.toUpperCase());
@@ -538,15 +609,9 @@ export class CryptoService {
     });
   }
 
-  private async syncMeria(wallet: CryptoWallet, apiKey: string) {
-    const tokens = await this.getMeriaTokens(apiKey);
-    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
-
-    const [snapshot] = await this.db
-      .insert(schema.cryptoSnapshots)
-      .values({ walletId: wallet.id, totalValueUsd, rawData: { tokens } })
-      .returning();
-    return snapshot;
+  private async syncMeria(wallet: CryptoWallet, apiKey: string, coingeckoApiKey?: string) {
+    const tokens = await this.getMeriaTokens(apiKey, coingeckoApiKey);
+    return this.writeSnapshot(wallet.id, tokens);
   }
 
   async listCostEntries(userId: string, walletId: string) {

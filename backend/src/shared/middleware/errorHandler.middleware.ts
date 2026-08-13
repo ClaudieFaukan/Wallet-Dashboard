@@ -15,7 +15,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);
   const body: ApiError = {
     success: false,
-    error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' },
+    error: { code: 'INTERNAL_ERROR', message: 'Une erreur inattendue est survenue. Réessayez plus tard.' },
   };
   res.status(500).json(body);
 };

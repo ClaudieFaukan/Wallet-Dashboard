@@ -120,7 +120,8 @@ type FieldName =
   | 'binanceApiSecret'
   | 'bybitApiKey'
   | 'bybitApiSecret'
-  | 'meriaApiKey';
+  | 'meriaApiKey'
+  | 'coingeckoApiKey';
 
 interface IntegrationGroupProps {
   title: string;
@@ -362,6 +363,22 @@ function IntegrationsSection() {
           disabled={isDemo}
           testResult={testResults.meria}
         />
+        <IntegrationGroup
+          title="CoinGecko (cours des cryptos)"
+          configured={Boolean(status?.coingeckoConfigured)}
+          fields={[{ name: 'coingeckoApiKey', label: 'Clé API Demo' }]}
+          onSave={handleSave}
+          saving={updateSettings.isPending}
+          onTest={(v) => handleTest('coingecko', v)}
+          testing={testSetting.isPending}
+          disabled={isDemo}
+          testResult={testResults.coingecko}
+        />
+        <p className="text-xs text-text-muted">
+          Optionnel — sans clé, les cours crypto (wallets, Meria, Crypto.com…) utilisent le quota
+          public de CoinGecko, vite atteint. Une clé Demo gratuite (compte CoinGecko, plan Demo)
+          augmente nettement cette limite.
+        </p>
       </div>
     </Card>
   );

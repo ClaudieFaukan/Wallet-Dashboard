@@ -3,6 +3,14 @@ export interface TokenPrice {
   usd24hChange: number | null;
 }
 
+/** Attaches a user-supplied CoinGecko API key to a request, if one is configured — the free
+ * "Demo" key (unlike a fully anonymous request) gets a meaningfully higher rate limit, which is
+ * the whole point of letting the user set one in Settings. Requests without a key still work,
+ * just against the anonymous (much tighter) limit. */
+function withApiKeyHeaders(apiKey?: string): Record<string, string> | undefined {
+  return apiKey ? { 'x-cg-demo-api-key': apiKey } : undefined;
+}
+
 export interface CoinMarketData {
   id: string;
   symbol: string;
@@ -30,6 +38,7 @@ interface CoinGeckoTokenPriceResponse {
 export async function getTokenPricesUsd(
   platform: 'ethereum' | 'solana',
   contractAddresses: string[],
+  apiKey?: string,
 ): Promise<Record<string, TokenPrice>> {
   const result: Record<string, TokenPrice> = {};
 
@@ -40,7 +49,7 @@ export async function getTokenPricesUsd(
     url.searchParams.set('include_24hr_change', 'true');
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: withApiKeyHeaders(apiKey) });
       if (!response.ok) continue;
 
       const data = (await response.json()) as CoinGeckoTokenPriceResponse;
@@ -71,12 +80,14 @@ interface CoinGeckoListEntry {
 let coinsListCache: { fetchedAt: number; bySymbol: Map<string, string> } | null = null;
 const COINS_LIST_TTL_MS = 24 * 60 * 60 * 1000;
 
-async function getSymbolToIdMap(): Promise<Map<string, string>> {
+async function getSymbolToIdMap(apiKey?: string): Promise<Map<string, string>> {
   if (coinsListCache && Date.now() - coinsListCache.fetchedAt < COINS_LIST_TTL_MS) {
     return coinsListCache.bySymbol;
   }
 
-  const response = await fetch('https://api.coingecko.com/api/v3/coins/list');
+  const response = await fetch('https://api.coingecko.com/api/v3/coins/list', {
+    headers: withApiKeyHeaders(apiKey),
+  });
   if (!response.ok) {
     throw new Error(`CoinGecko coins list request failed: ${response.status}`);
   }
@@ -97,8 +108,11 @@ async function getSymbolToIdMap(): Promise<Map<string, string>> {
 
 /** Resolves ticker symbols (e.g. "BTC", "eth") to CoinGecko coin ids. Symbols with no match
  * are simply absent from the returned map. */
-export async function resolveSymbolsToIds(symbols: string[]): Promise<Map<string, string>> {
-  const bySymbol = await getSymbolToIdMap();
+export async function resolveSymbolsToIds(
+  symbols: string[],
+  apiKey?: string,
+): Promise<Map<string, string>> {
+  const bySymbol = await getSymbolToIdMap(apiKey);
   const result = new Map<string, string>();
   for (const symbol of symbols) {
     const id = bySymbol.get(symbol.toLowerCase());
@@ -117,7 +131,10 @@ interface CoinGeckoMarketEntry {
 }
 
 /** Batched name/logo/current price/24h change for a list of CoinGecko coin ids. */
-export async function getMarketData(ids: string[]): Promise<Map<string, CoinMarketData>> {
+export async function getMarketData(
+  ids: string[],
+  apiKey?: string,
+): Promise<Map<string, CoinMarketData>> {
   const result = new Map<string, CoinMarketData>();
   if (ids.length === 0) return result;
 
@@ -126,7 +143,7 @@ export async function getMarketData(ids: string[]): Promise<Map<string, CoinMark
   url.searchParams.set('ids', ids.join(','));
   url.searchParams.set('price_change_percentage', '24h');
 
-  const response = await fetch(url);
+  const response = await fetch(url, { headers: withApiKeyHeaders(apiKey) });
   if (!response.ok) {
     throw new Error(`CoinGecko markets request failed: ${response.status}`);
   }
@@ -147,12 +164,15 @@ export async function getMarketData(ids: string[]): Promise<Map<string, CoinMark
 
 /** Convenience wrapper: resolves a batch of ticker symbols straight to their market data,
  * keyed by the original (uppercased) symbol so callers can look up by ticker directly. */
-export async function getMarketDataBySymbol(symbols: string[]): Promise<Map<string, CoinMarketData>> {
+export async function getMarketDataBySymbol(
+  symbols: string[],
+  apiKey?: string,
+): Promise<Map<string, CoinMarketData>> {
   const unique = [...new Set(symbols.map((s) => s.toUpperCase()))];
-  const ids = await resolveSymbolsToIds(unique);
+  const ids = await resolveSymbolsToIds(unique, apiKey);
   if (ids.size === 0) return new Map();
 
-  const marketData = await getMarketData([...ids.values()]);
+  const marketData = await getMarketData([...ids.values()], apiKey);
   const result = new Map<string, CoinMarketData>();
   for (const symbol of unique) {
     const id = ids.get(symbol);

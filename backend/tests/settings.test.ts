@@ -189,6 +189,7 @@ describe('settings module', () => {
       binanceConfigured: false,
       bybitConfigured: false,
       meriaConfigured: false,
+      coingeckoConfigured: false,
     });
   });
 
@@ -374,6 +375,30 @@ describe('settings module', () => {
         .post('/api/v1/settings/test')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({ section: 'meria', meriaApiKey: 'key' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.success).toBe(true);
+    });
+
+    it('reports success for a valid CoinGecko key', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () =>
+              Promise.resolve([
+                { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin', image: 'btc.png', current_price: 50000, price_change_percentage_24h: 1 },
+              ]),
+          }),
+        ),
+      );
+
+      const res = await agent
+        .post('/api/v1/settings/test')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ section: 'coingecko', coingeckoApiKey: 'a-key' });
 
       expect(res.status).toBe(200);
       expect(res.body.data.success).toBe(true);

@@ -13,6 +13,7 @@ export const SETTINGS_FIELDS = {
   bybitApiKey: 'bybit_api_key',
   bybitApiSecret: 'bybit_api_secret',
   meriaApiKey: 'meria_api_key',
+  coingeckoApiKey: 'coingecko_api_key',
 } as const;
 
 export type SettingsField = keyof typeof SETTINGS_FIELDS;

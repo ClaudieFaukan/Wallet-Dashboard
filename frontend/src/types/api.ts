@@ -743,6 +743,7 @@ export interface SettingsStatus {
   binanceConfigured: boolean;
   bybitConfigured: boolean;
   meriaConfigured: boolean;
+  coingeckoConfigured: boolean;
 }
 
 export interface UpdateSettingsInput {
@@ -759,6 +760,7 @@ export interface UpdateSettingsInput {
   bybitApiKey?: string;
   bybitApiSecret?: string;
   meriaApiKey?: string;
+  coingeckoApiKey?: string;
 }
 
 export type TestSettingInput =
@@ -770,7 +772,8 @@ export type TestSettingInput =
   | { section: 'alphaVantage'; alphaVantageApiKey: string }
   | { section: 'binance'; binanceApiKey: string; binanceApiSecret: string }
   | { section: 'bybit'; bybitApiKey: string; bybitApiSecret: string }
-  | { section: 'meria'; meriaApiKey: string };
+  | { section: 'meria'; meriaApiKey: string }
+  | { section: 'coingecko'; coingeckoApiKey: string };
 
 export interface TestSettingResult {
   success: boolean;

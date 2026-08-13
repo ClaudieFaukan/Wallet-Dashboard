@@ -10,6 +10,7 @@ import { getQuote } from '../../integrations/alphavantage/alphavantage.client.js
 import { getAccountBalances } from '../../integrations/binance/binance.client.js';
 import { getWalletBalanceUsd } from '../../integrations/bybit/bybit.client.js';
 import { getWallets as getMeriaWallets } from '../../integrations/meria/meria.client.js';
+import { getMarketData } from '../../integrations/coingecko/coingecko.client.js';
 import { SETTINGS_FIELDS, type SettingsField } from './settings.constants.js';
 import type { TestSettingInput, UpdateSettingsInput } from './settings.schema.js';
 
@@ -51,6 +52,7 @@ export class SettingsService {
       binanceConfigured: has('binanceApiKey') && has('binanceApiSecret'),
       bybitConfigured: has('bybitApiKey') && has('bybitApiSecret'),
       meriaConfigured: has('meriaApiKey'),
+      coingeckoConfigured: has('coingeckoApiKey'),
     };
   }
 
@@ -150,6 +152,14 @@ export class SettingsService {
             success: true,
             message: `Connexion Meria réussie (${wallets.length} actif${wallets.length > 1 ? 's' : ''}).`,
           };
+        }
+        case 'coingecko': {
+          // Bitcoin is always listed — safe, minimal call to confirm the key is accepted
+          // (CoinGecko returns 401/403 rather than an empty result for an invalid Demo key).
+          const marketData = await getMarketData(['bitcoin'], input.coingeckoApiKey);
+          return marketData.has('bitcoin')
+            ? { success: true, message: 'Clé CoinGecko valide.' }
+            : { success: false, message: 'Clé acceptée mais aucun résultat retourné — vérifie ton quota.' };
         }
       }
     } catch (err) {

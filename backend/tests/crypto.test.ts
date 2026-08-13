@@ -368,6 +368,164 @@ describe('crypto module', () => {
       expect(tokensRes.body.data.tokens.map((t: { symbol: string }) => t.symbol)).toContain('SOL');
     });
 
+    it('refuses to overwrite the stored total when CoinGecko pricing collapses for every token', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+
+      const coinsList = () =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve([
+              { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+              { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+              { id: 'solana', symbol: 'sol', name: 'Solana' },
+            ]),
+        });
+
+      // First sync: CoinGecko is healthy, 2 SOL priced at $100 → a good snapshot gets stored.
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) return coinsList();
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'solana', symbol: 'sol', name: 'Solana', image: 'sol.png', current_price: 100, price_change_percentage_24h: 1 },
+                ]),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: 2_000_000_000 } }) });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+      const firstSync = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(firstSync.status).toBe(200);
+      expect(firstSync.body.data.totalValueUsd).toBe(20000);
+
+      // Second sync: CoinGecko rate-limited — /coins/markets returns nothing, so SOL (the only
+      // holding) resolves with no price at all. Must refuse to write rather than storing 0.
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) return coinsList();
+          if (urlStr.includes('/coins/markets')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: 2_000_000_000 } }) });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+      const secondSync = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(secondSync.status).toBe(503);
+      expect(secondSync.body.error.code).toBe('COINGECKO_RATE_LIMITED');
+      expect(secondSync.body.error.message).toMatch(/CoinGecko/);
+
+      // The good snapshot from the first sync must still be the only one on record — not
+      // overwritten with a corrupted ~0 total.
+      const historyRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/history`)
+        .set('Authorization', `Bearer ${accessToken}`);
+      expect(historyRes.body.data).toHaveLength(1);
+      expect(historyRes.body.data[0].totalValueUsd).toBe(20000);
+    });
+
+    it('falls back to the last synced snapshot for "Tokens détenus" when CoinGecko pricing collapses', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+
+      const coinsList = () =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve([
+              { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+              { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+              { id: 'solana', symbol: 'sol', name: 'Solana' },
+            ]),
+        });
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) return coinsList();
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'solana', symbol: 'sol', name: 'Solana', image: 'sol.png', current_price: 100, price_change_percentage_24h: 1 },
+                ]),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: 2_000_000_000 } }) });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+      await agent.post(`/api/v1/crypto/wallets/${walletId}/sync`).set('Authorization', `Bearer ${accessToken}`);
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) return coinsList();
+          if (urlStr.includes('/coins/markets')) return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: 2_000_000_000 } }) });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      // The live SOL price failed to resolve, but the last synced snapshot had a real price —
+      // that's what should come back, not a blank/priceless row.
+      expect(tokensRes.body.data.tokens).toHaveLength(1);
+      expect(tokensRes.body.data.tokens[0].symbol).toBe('SOL');
+      expect(tokensRes.body.data.tokens[0].priceUsd).toBe(100);
+      expect(tokensRes.body.data.note).toMatch(/CoinGecko/);
+    });
+
     it('syncs a MetaMask/Ethereum wallet via Etherscan (native ETH only) and stores a snapshot', async () => {
       const { agent, accessToken } = await registerAndGetToken();
       const createRes = await agent
