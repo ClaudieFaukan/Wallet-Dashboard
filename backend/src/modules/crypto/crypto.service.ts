@@ -19,6 +19,7 @@ import {
 import {
   type CoinMarketData,
   type TokenPrice,
+  getCoinsByContractAddress,
   getMarketDataBySymbol,
   getTokenPricesUsd,
 } from '../../integrations/coingecko/coingecko.client.js';
@@ -428,17 +429,17 @@ export class CryptoService {
     const nativeAmount = lamportsToSol(lamports);
     const accounts = accountsResult.accounts;
 
-    const [nativeMarketData, prices] = await Promise.all([
+    const [nativeMarketData, coinsByMint] = await Promise.all([
       nativeAmount > 0
         ? getMarketDataBySymbol(['SOL'], coingeckoApiKey).catch(() => new Map<string, CoinMarketData>())
         : Promise.resolve(new Map<string, CoinMarketData>()),
       accounts.length > 0
-        ? getTokenPricesUsd(
+        ? getCoinsByContractAddress(
             'solana',
             accounts.map((a) => a.mint),
             coingeckoApiKey,
           )
-        : Promise.resolve<Record<string, TokenPrice>>({}),
+        : Promise.resolve<Record<string, CoinMarketData>>({}),
     ]);
 
     // "No CoinGecko price" is only trustworthy as a spam signal when CoinGecko itself is
@@ -452,15 +453,19 @@ export class CryptoService {
 
     const splTokens = accounts
       .map((a): WalletToken => {
-        const price = prices[a.mint.toLowerCase()];
+        // Resolved by mint address, not by ticker — SPL token accounts only ever expose the
+        // mint, never a name, so a ticker-based lookup would have nothing real to match against.
+        // Verified live: without this, USDT and Phantom Staked SOL both displayed as their raw
+        // truncated mint address instead of a real name (see coingecko.client.ts doc comment).
+        const coin = coinsByMint[a.mint.toLowerCase()];
         return {
-          symbol: `${a.mint.slice(0, 4)}…${a.mint.slice(-4)}`,
-          name: null,
-          logoUrl: null,
+          symbol: coin?.symbol ?? `${a.mint.slice(0, 4)}…${a.mint.slice(-4)}`,
+          name: coin?.name ?? null,
+          logoUrl: coin?.logoUrl ?? null,
           amount: a.amount,
-          priceUsd: price?.usd ?? null,
-          valueUsdCents: price?.usd != null ? Math.round(a.amount * price.usd * 100) : null,
-          change24hPct: price?.usd24hChange ?? null,
+          priceUsd: coin?.priceUsd ?? null,
+          valueUsdCents: coin?.priceUsd != null ? Math.round(a.amount * coin.priceUsd * 100) : null,
+          change24hPct: coin?.change24hPct ?? null,
         };
       })
       // Solana wallets accumulate spam/airdropped token accounts (scam projects sending 1 unit

@@ -188,10 +188,16 @@ describe('crypto module', () => {
                 ]),
             });
           }
-          if (urlStr.includes('/simple/token_price/')) {
+          if (urlStr.includes(`/coins/solana/contract/${mint}`)) {
             return Promise.resolve({
               ok: true,
-              json: () => Promise.resolve({ [mint.toLowerCase()]: { usd: 5, usd_24h_change: 0.5 } }),
+              json: () =>
+                Promise.resolve({
+                  symbol: 'usdc',
+                  name: 'USD Coin',
+                  image: { small: 'usdc.png' },
+                  market_data: { current_price: { usd: 5 }, price_change_percentage_24h: 0.5 },
+                }),
             });
           }
           const body = options?.body ? JSON.parse(String(options.body)) : {};
@@ -229,6 +235,145 @@ describe('crypto module', () => {
       expect(syncRes.status).toBe(200);
       // (2 SOL * $100) + (10 tokens * $5) = $250 = 25000 cents
       expect(syncRes.body.data.totalValueUsd).toBe(25000);
+    });
+
+    it('resolves native SOL to real Solana even when a decoy coin shares the same ticker', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  // A decoy listed before real Solana, sharing the same "sol" ticker — the exact
+                  // collision reproduced live (an obscure wrapped-SOL bridge token), which used
+                  // to make native SOL price/name resolve to this instead of the real thing.
+                  { id: 'allbridge-bridged-sol-near-protocol', symbol: 'sol', name: 'Allbridge Bridged SOL (Near Protocol)' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            const ids = new URL(urlStr).searchParams.get('ids');
+            expect(ids).toBe('solana');
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'solana', symbol: 'sol', name: 'Solana', image: 'sol.png', current_price: 150, price_change_percentage_24h: 2 },
+                ]),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ result: { value: 1_000_000_000 } }), // 1 SOL
+            });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.tokens).toHaveLength(1);
+      expect(tokensRes.body.data.tokens[0].name).toBe('Solana');
+      expect(tokensRes.body.data.tokens[0].priceUsd).toBe(150);
+    });
+
+    it('resolves an SPL token to its real name/symbol by mint address, not a truncated placeholder', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+      // The real Solana USDT mint — resolving this by ticker (its raw mint prefix "Es9v…wNYB"
+      // isn't a ticker at all) would never work, which is exactly the bug being guarded against.
+      const usdtMint = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB';
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+          }
+          if (urlStr.includes(`/coins/solana/contract/${usdtMint}`)) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  symbol: 'usdt',
+                  name: 'Tether USD',
+                  image: { small: 'usdt.png' },
+                  market_data: { current_price: { usd: 1 }, price_change_percentage_24h: 0.1 },
+                }),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: 0 } }) });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  result: {
+                    value: [
+                      {
+                        account: {
+                          data: {
+                            parsed: { info: { mint: usdtMint, tokenAmount: { uiAmount: 5, decimals: 6 } } },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                }),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.tokens).toHaveLength(1);
+      expect(tokensRes.body.data.tokens[0].symbol).toBe('USDT');
+      expect(tokensRes.body.data.tokens[0].name).toBe('Tether USD');
+      expect(tokensRes.body.data.tokens[0].priceUsd).toBe(1);
     });
 
     it('excludes spam SPL token accounts (no CoinGecko price, no resolved name) from the sync total', async () => {

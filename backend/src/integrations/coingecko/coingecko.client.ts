@@ -67,6 +67,60 @@ export async function getTokenPricesUsd(
   return result;
 }
 
+interface CoinGeckoContractResponse {
+  symbol: string;
+  name: string;
+  image?: { small?: string };
+  market_data?: {
+    current_price?: { usd?: number };
+    price_change_percentage_24h?: number | null;
+  };
+}
+
+/** Full coin identity (name/symbol/logo) + price for a list of token contract/mint addresses,
+ * resolved directly by address rather than by ticker. Needed for platforms (Solana SPL tokens)
+ * where the caller has no name at all to begin with — only a mint address — so ticker-based
+ * lookup (getMarketDataBySymbol) never had anything real to match against and always failed
+ * silently, leaving tokens displayed as their raw truncated mint address (verified live: a
+ * wallet's USDT and Phantom Staked SOL holdings showed as "Es9v…wNYB"/"pSo1…RQfL" instead of
+ * their real names). One request per address, sequential — same rate-limit reasoning as
+ * getTokenPricesUsd. Absent from the result if CoinGecko has no listing for that address or the
+ * lookup failed. */
+export async function getCoinsByContractAddress(
+  platform: 'ethereum' | 'solana',
+  contractAddresses: string[],
+  apiKey?: string,
+): Promise<Record<string, CoinMarketData>> {
+  const result: Record<string, CoinMarketData> = {};
+
+  for (const address of contractAddresses) {
+    try {
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/coins/${platform}/contract/${address}`,
+        { headers: withApiKeyHeaders(apiKey) },
+      );
+      if (!response.ok) continue;
+
+      const data = (await response.json()) as CoinGeckoContractResponse;
+      const priceUsd = data.market_data?.current_price?.usd;
+      if (priceUsd == null) continue;
+
+      result[address.toLowerCase()] = {
+        id: address,
+        symbol: data.symbol.toUpperCase(),
+        name: data.name,
+        logoUrl: data.image?.small ?? '',
+        priceUsd,
+        change24hPct: data.market_data?.price_change_percentage_24h ?? null,
+      };
+    } catch {
+      // Treated the same as "CoinGecko has no listing for this contract" — see doc comment above.
+    }
+  }
+
+  return result;
+}
+
 interface CoinGeckoListEntry {
   id: string;
   symbol: string;
@@ -106,6 +160,17 @@ async function getSymbolToIdMap(apiKey?: string): Promise<Map<string, string>> {
   return bySymbol;
 }
 
+// A few major tickers collide with obscure wrapped/bridged coins that also claim the same
+// symbol on CoinGecko — verified live: native SOL was resolving to "Allbridge Bridged SOL (Near
+// Protocol)" instead of real Solana, because that listing happens to sort earlier in CoinGecko's
+// /coins/list than the genuine one. There's only one real Bitcoin/Ethereum/Solana, so these are
+// resolved directly rather than trusting whichever entry the list-order pick lands on.
+const KNOWN_SYMBOL_OVERRIDES: Record<string, string> = {
+  BTC: 'bitcoin',
+  ETH: 'ethereum',
+  SOL: 'solana',
+};
+
 /** Resolves ticker symbols (e.g. "BTC", "eth") to CoinGecko coin ids. Symbols with no match
  * are simply absent from the returned map. */
 export async function resolveSymbolsToIds(
@@ -115,6 +180,11 @@ export async function resolveSymbolsToIds(
   const bySymbol = await getSymbolToIdMap(apiKey);
   const result = new Map<string, string>();
   for (const symbol of symbols) {
+    const override = KNOWN_SYMBOL_OVERRIDES[symbol.toUpperCase()];
+    if (override) {
+      result.set(symbol, override);
+      continue;
+    }
     const id = bySymbol.get(symbol.toLowerCase());
     if (id) result.set(symbol, id);
   }

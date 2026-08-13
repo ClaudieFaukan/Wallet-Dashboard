@@ -53,6 +53,7 @@ export function WalletDetailPage() {
     <div>
       <Header
         title={wallet?.name ?? 'Wallet'}
+        backTo="/crypto"
         actions={
           <Button size="sm" icon={<RefreshCw size={14} />} onClick={handleSync} disabled={sync.isPending}>
             Sync
