@@ -1,6 +1,7 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { usdCentsToEurCents } from '../lib/constants';
+import { cryptoPlatformLogos, getInstitutionLogo } from '../lib/institutionLogos';
 import { dayKey, forwardFill, lastNDays } from './useNetWorthHistory';
 import type { AssetKind } from '../components/charts/chartTheme';
 import type { CollectibleWithHistory, CryptoWallet, RealEstateAsset } from '../types/api';
@@ -33,6 +34,7 @@ export interface PatrimoineRow {
   kind: AssetKind;
   name: string;
   subtitle: string | null;
+  logoUrl: string | null;
   typeLabel: string;
   value: number;
   isLiability: boolean;
@@ -156,6 +158,7 @@ export function usePatrimoineRows() {
       kind: 'account',
       name: account.name,
       subtitle: account.institution,
+      logoUrl: getInstitutionLogo(account.institution, account.name),
       typeLabel: accountTypeLabels[account.type],
       value: account.balance,
       isLiability: false,
@@ -187,6 +190,7 @@ export function usePatrimoineRows() {
       kind: 'investment',
       name: acc.name,
       subtitle: acc.platform,
+      logoUrl: getInstitutionLogo(acc.platform, acc.name),
       typeLabel: 'Investissement',
       value: acc.currentValue,
       isLiability: false,
@@ -212,6 +216,7 @@ export function usePatrimoineRows() {
       kind: 'crypto',
       name: wallet.name,
       subtitle: cryptoPlatformLabels[wallet.platform],
+      logoUrl: cryptoPlatformLogos[wallet.platform],
       typeLabel: 'Crypto',
       value: latest ? usdCentsToEurCents(latest.totalValueUsd) : 0,
       isLiability: false,
@@ -244,6 +249,7 @@ export function usePatrimoineRows() {
         asset.type === 'physical'
           ? [asset.location, asset.surfaceM2 ? `${asset.surfaceM2} m²` : null].filter(Boolean).join(' · ') || null
           : asset.platform,
+      logoUrl: getInstitutionLogo(asset.platform),
       typeLabel: realEstateTypeLabels[asset.type],
       value: asset.currentValue,
       isLiability: false,
@@ -276,6 +282,7 @@ export function usePatrimoineRows() {
       kind: 'collectibles',
       name: 'Collection',
       subtitle: `${collectibleItems.data?.length ?? 0} objet(s)`,
+      logoUrl: null,
       typeLabel: 'Collectibles',
       value: totals?.totalCurrentValue ?? 0,
       isLiability: false,
@@ -295,6 +302,7 @@ export function usePatrimoineRows() {
       kind: 'credit',
       name: credit.name,
       subtitle: credit.institution,
+      logoUrl: getInstitutionLogo(credit.institution, credit.name),
       typeLabel: 'Crédit',
       value: credit.remainingAmount,
       isLiability: true,

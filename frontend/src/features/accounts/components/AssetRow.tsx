@@ -81,7 +81,7 @@ export function AssetRow({ row }: { row: PatrimoineRow }) {
   return (
     <div className="group flex items-center gap-4 border-b border-border/50 px-2 py-3.5 text-sm transition-colors hover:bg-bg-elevated">
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <Avatar name={row.name} />
+        <Avatar name={row.name} src={row.logoUrl} />
         {row.linkTo ? (
           <Link to={row.linkTo} className="min-w-0 hover:[&_p:first-child]:text-accent-gold">
             {nameBlock}

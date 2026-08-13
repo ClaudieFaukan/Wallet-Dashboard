@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, RefreshCw } from 'lucide-react';
+import { Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Avatar } from '../../../components/ui/Avatar';
@@ -11,9 +11,10 @@ import { SparklineChart } from '../../../components/charts/SparklineChart';
 import { getErrorMessage } from '../../../lib/api';
 import { usdCentsToEurCents } from '../../../lib/constants';
 import { formatDate } from '../../../lib/format';
+import { cryptoPlatformLogos } from '../../../lib/institutionLogos';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
 import type { CryptoWallet } from '../../../types/api';
-import { useCryptoHistory, useSyncWallet } from '../hooks/useCrypto';
+import { useCryptoHistory, useDeleteWallet, useSyncWallet } from '../hooks/useCrypto';
 import { EditWalletDrawer } from './EditWalletDrawer';
 
 const platformLabels: Record<CryptoWallet['platform'], string> = {
@@ -30,6 +31,7 @@ const platformLabels: Record<CryptoWallet['platform'], string> = {
 export function WalletCard({ wallet, ytdVariationPct }: { wallet: CryptoWallet; ytdVariationPct: number | null }) {
   const { data: history, isLoading: historyLoading } = useCryptoHistory(wallet.id);
   const sync = useSyncWallet();
+  const deleteWallet = useDeleteWallet();
   const toast = useToast();
   const { formatCents } = useFormatCurrency();
   const [editOpen, setEditOpen] = useState(false);
@@ -42,19 +44,34 @@ export function WalletCard({ wallet, ytdVariationPct }: { wallet: CryptoWallet; 
     });
   }
 
+  function handleDelete(e: MouseEvent) {
+    e.stopPropagation();
+    deleteWallet.mutate(wallet.id, { onError: (err) => toast.error(getErrorMessage(err)) });
+  }
+
   return (
     <Card className="group relative p-4">
-      <button
-        type="button"
-        title="Éditer"
-        onClick={() => setEditOpen(true)}
-        className="absolute right-3 top-3 z-10 rounded-md p-1 text-text-muted opacity-0 transition-opacity hover:bg-bg-elevated hover:text-text-primary group-hover:opacity-100"
-      >
-        <Pencil size={12} />
-      </button>
+      <div className="absolute right-3 top-3 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          type="button"
+          title="Éditer"
+          onClick={() => setEditOpen(true)}
+          className="rounded-md p-1 text-text-muted hover:bg-bg-elevated hover:text-text-primary"
+        >
+          <Pencil size={12} />
+        </button>
+        <button
+          type="button"
+          title="Supprimer"
+          onClick={handleDelete}
+          className="rounded-md p-1 text-text-muted hover:bg-bg-elevated hover:text-accent-3"
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
 
       <div className="flex items-center gap-3">
-        <Avatar name={wallet.name} size={32} />
+        <Avatar name={wallet.name} src={cryptoPlatformLogos[wallet.platform]} size={32} />
         <div className="min-w-0 flex-1">
           <Link
             to={`/crypto/${wallet.id}`}

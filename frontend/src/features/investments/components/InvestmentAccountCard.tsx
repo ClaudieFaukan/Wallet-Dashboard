@@ -1,11 +1,13 @@
 import { useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Trash2 } from 'lucide-react';
+import { Avatar } from '../../../components/ui/Avatar';
 import { Card } from '../../../components/ui/Card';
 import { Variation } from '../../../components/ui/Variation';
 import { useToast } from '../../../components/ui/Toast';
 import { getErrorMessage } from '../../../lib/api';
 import { useFormatCurrency } from '../../../hooks/useFormatCurrency';
+import { getInstitutionLogo } from '../../../lib/institutionLogos';
 import type { InvestmentAccount } from '../../../types/api';
 import { useDeleteInvestmentAccount } from '../hooks/useInvestments';
 import { EditInvestmentAccountDrawer } from './EditInvestmentAccountDrawer';
@@ -57,8 +59,13 @@ export function InvestmentAccountCard({
         </button>
       </div>
 
-      <p className="text-sm font-semibold text-text-primary">{account.name}</p>
-      {account.platform && <p className="text-xs text-text-muted">{account.platform}</p>}
+      <div className="flex items-center gap-3">
+        <Avatar name={account.name} src={getInstitutionLogo(account.platform, account.name)} size={32} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-text-primary">{account.name}</p>
+          {account.platform && <p className="truncate text-xs text-text-muted">{account.platform}</p>}
+        </div>
+      </div>
       <p className="mt-2 font-mono text-lg font-semibold text-text-primary">
         {formatCents(account.currentValue, account.currency)}
       </p>

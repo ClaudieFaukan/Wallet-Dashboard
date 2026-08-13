@@ -90,7 +90,7 @@ describe('crypto module', () => {
   });
 
   describe('POST /wallets/:id/sync', () => {
-    it('syncs a Phantom/Solana wallet and stores a snapshot', async () => {
+    it('syncs a Phantom/Solana wallet (native SOL only) and stores a snapshot', async () => {
       const { agent, accessToken } = await registerAndGetToken();
       const createRes = await agent
         .post('/api/v1/crypto/wallets')
@@ -100,17 +100,42 @@ describe('crypto module', () => {
 
       vi.stubGlobal(
         'fetch',
-        vi.fn((url: string) => {
-          if (url.includes('coingecko')) {
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          // CoinGecko's coin list is cached process-wide for 24h — always return the same
+          // canonical superset here so whichever test happens to prime the cache first doesn't
+          // starve a later test that needs a different symbol resolved (e.g. 'btc'/'eth').
+          if (urlStr.includes('/coins/list')) {
             return Promise.resolve({
               ok: true,
-              json: () => Promise.resolve({ solana: { usd: 100 } }),
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
             });
           }
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ result: { value: 2_000_000_000 } }), // 2 SOL
-          });
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'solana', symbol: 'sol', name: 'Solana', image: 'sol.png', current_price: 100, price_change_percentage_24h: 1 },
+                ]),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ result: { value: 2_000_000_000 } }), // 2 SOL
+            });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
         }),
       );
 
@@ -130,7 +155,220 @@ describe('crypto module', () => {
       expect(historyRes.body.data[0].totalValueUsd).toBe(20000);
     });
 
-    it('syncs a MetaMask/Ethereum wallet via Etherscan and stores a snapshot', async () => {
+    it('includes SPL token value (not just native SOL) in the sync total', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+      const mint = 'UsdcMintAddress11111111111111111111111111';
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'solana', symbol: 'sol', name: 'Solana', image: 'sol.png', current_price: 100, price_change_percentage_24h: 1 },
+                ]),
+            });
+          }
+          if (urlStr.includes('/simple/token_price/')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ [mint.toLowerCase()]: { usd: 5, usd_24h_change: 0.5 } }),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ result: { value: 2_000_000_000 } }), // 2 SOL
+            });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  result: {
+                    value: [
+                      {
+                        account: {
+                          data: { parsed: { info: { mint, tokenAmount: { uiAmount: 10, decimals: 6 } } } },
+                        },
+                      },
+                    ],
+                  },
+                }),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const syncRes = await agent
+        .post(`/api/v1/crypto/wallets/${walletId}/sync`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(syncRes.status).toBe(200);
+      // (2 SOL * $100) + (10 tokens * $5) = $250 = 25000 cents
+      expect(syncRes.body.data.totalValueUsd).toBe(25000);
+    });
+
+    it('excludes spam SPL token accounts (no CoinGecko price, no resolved name) from the sync total', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+      const spamMint = 'SpamMintAddress1111111111111111111111111';
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+          }
+          if (urlStr.includes('/simple/token_price/')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) }); // no listing
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: 0 } }) });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  result: {
+                    value: [
+                      {
+                        account: {
+                          data: {
+                            parsed: { info: { mint: spamMint, tokenAmount: { uiAmount: 1, decimals: 0 } } },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                }),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.tokens).toHaveLength(0);
+    });
+
+    it('does not spam-filter SPL tokens when CoinGecko pricing is unavailable (native SOL itself unpriced)', async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+      const mint = 'SomeMintAddress11111111111111111111111111';
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          // CoinGecko rate-limited / unreachable: markets + token_price both come back empty,
+          // including for SOL itself — this is the canary the spam filter checks before trusting
+          // "no price" as a spam signal (see crypto.service.ts getSolanaTokens).
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+          }
+          if (urlStr.includes('/simple/token_price/')) {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ result: { value: 2_000_000_000 } }), // 2 SOL
+            });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  result: {
+                    value: [
+                      {
+                        account: {
+                          data: { parsed: { info: { mint, tokenAmount: { uiAmount: 5, decimals: 6 } } } },
+                        },
+                      },
+                    ],
+                  },
+                }),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      // Native SOL + the SPL token both kept, unfiltered, even though neither has a price —
+      // pricing being globally unavailable must not be mistaken for "these are spam".
+      expect(tokensRes.body.data.tokens).toHaveLength(2);
+      expect(tokensRes.body.data.tokens.map((t: { symbol: string }) => t.symbol)).toContain('SOL');
+    });
+
+    it('syncs a MetaMask/Ethereum wallet via Etherscan (native ETH only) and stores a snapshot', async () => {
       const { agent, accessToken } = await registerAndGetToken();
       const createRes = await agent
         .post('/api/v1/crypto/wallets')
@@ -146,18 +384,42 @@ describe('crypto module', () => {
       vi.stubGlobal(
         'fetch',
         vi.fn((url: string | URL) => {
-          if (String(url).includes('coingecko')) {
+          const urlStr = String(url);
+          if (urlStr.includes('action=balance')) {
             return Promise.resolve({
               ok: true,
-              json: () => Promise.resolve({ ethereum: { usd: 3000 } }),
+              // 2 ETH
+              json: () =>
+                Promise.resolve({ status: '1', message: 'OK', result: '2000000000000000000' }),
             });
           }
-          return Promise.resolve({
-            ok: true,
-            // 2 ETH
-            json: () =>
-              Promise.resolve({ status: '1', message: 'OK', result: '2000000000000000000' }),
-          });
+          if (urlStr.includes('action=tokentx')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ status: '0', message: 'No transactions found', result: [] }),
+            });
+          }
+          if (urlStr.includes('/coins/list')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          if (urlStr.includes('/coins/markets')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum', image: 'eth.png', current_price: 3000, price_change_percentage_24h: 1 },
+                ]),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
         }),
       );
 
@@ -168,6 +430,111 @@ describe('crypto module', () => {
       expect(syncRes.status).toBe(200);
       // 2 ETH * $3000 = $6000 = 600000 cents
       expect(syncRes.body.data.totalValueUsd).toBe(600000);
+    });
+
+    it("includes the native SOL balance in a Phantom wallet's token list even with no SPL tokens", async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'Phantom', platform: 'phantom', address: 'SomeSolAddr', chain: 'solana' });
+      const walletId = createRes.body.data.id as string;
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string, options?: { body?: string }) => {
+          const urlStr = String(url);
+          // CoinGecko's coin list is cached process-wide for 24h (see coingecko.client.ts) —
+          // returning a full list here (rather than just 'sol') avoids poisoning that shared
+          // cache for later tests in this file that need to resolve other symbols (e.g. 'btc').
+          if (urlStr.includes('coingecko')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          const body = options?.body ? JSON.parse(String(options.body)) : {};
+          if (body.method === 'getBalance') {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ result: { value: 2_000_000_000 } }), // 2 SOL
+            });
+          }
+          if (body.method === 'getTokenAccountsByOwner') {
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ result: { value: [] } }) });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.tokens).toHaveLength(1);
+      expect(tokensRes.body.data.tokens[0]).toMatchObject({ symbol: 'SOL', amount: 2 });
+    });
+
+    it("includes the native ETH balance in a MetaMask wallet's token list even with no ERC20 tokens", async () => {
+      const { agent, accessToken } = await registerAndGetToken();
+      const createRes = await agent
+        .post('/api/v1/crypto/wallets')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'MetaMask', platform: 'metamask', address: '0xSomeAddr', chain: 'ethereum' });
+      const walletId = createRes.body.data.id as string;
+
+      await agent
+        .put('/api/v1/settings')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ etherscanApiKey: 'test-etherscan-key' });
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string | URL) => {
+          const urlStr = String(url);
+          if (urlStr.includes('action=balance')) {
+            return Promise.resolve({
+              ok: true,
+              // 2 ETH
+              json: () =>
+                Promise.resolve({ status: '1', message: 'OK', result: '2000000000000000000' }),
+            });
+          }
+          if (urlStr.includes('action=tokentx')) {
+            return Promise.resolve({
+              ok: true,
+              json: () => Promise.resolve({ status: '0', message: 'No transactions found', result: [] }),
+            });
+          }
+          // Same shared-cache reasoning as the Phantom test above — full list, not just 'eth'.
+          if (urlStr.includes('coingecko')) {
+            return Promise.resolve({
+              ok: true,
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
+            });
+          }
+          return Promise.reject(new Error(`unexpected request to ${urlStr}`));
+        }),
+      );
+
+      const tokensRes = await agent
+        .get(`/api/v1/crypto/wallets/${walletId}/tokens`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(tokensRes.status).toBe(200);
+      expect(tokensRes.body.data.tokens).toHaveLength(1);
+      expect(tokensRes.body.data.tokens[0]).toMatchObject({ symbol: 'ETH', amount: 2 });
     });
 
     it('returns 501 for a Crypto.com wallet since it is not configured', async () => {
@@ -374,7 +741,12 @@ describe('crypto module', () => {
           if (urlStr.includes('coingecko.com/api/v3/coins/list')) {
             return Promise.resolve({
               ok: true,
-              json: () => Promise.resolve([{ id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' }]),
+              json: () =>
+                Promise.resolve([
+                  { id: 'bitcoin', symbol: 'btc', name: 'Bitcoin' },
+                  { id: 'ethereum', symbol: 'eth', name: 'Ethereum' },
+                  { id: 'solana', symbol: 'sol', name: 'Solana' },
+                ]),
             });
           }
           if (urlStr.includes('coingecko.com/api/v3/coins/markets')) {

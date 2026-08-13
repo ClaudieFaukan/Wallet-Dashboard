@@ -19,7 +19,7 @@ function MoverCard({ row, rank }: { row: PatrimoineRow; rank: number }) {
   const body = (
     <Card className="flex w-[190px] shrink-0 flex-col gap-3 p-4">
       <div className="flex items-start justify-between">
-        <Avatar name={row.name} size={28} />
+        <Avatar name={row.name} src={row.logoUrl} size={28} />
         <span className="rounded-full bg-bg-elevated px-1.5 py-0.5 text-[10px] font-medium text-text-muted">
           #{rank}
         </span>

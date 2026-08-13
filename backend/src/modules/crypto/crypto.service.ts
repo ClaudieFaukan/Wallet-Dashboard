@@ -4,19 +4,24 @@ import * as schema from '../../db/schema/index.js';
 import { env } from '../../config/env.js';
 import type { SettingsService } from '../settings/settings.service.js';
 import {
+  type Erc20ContractInfo,
   getErc20Balance,
   getErc20ContractsTouched,
   getEthBalanceWei,
-  getEthPriceUsd,
   weiToEth,
 } from '../../integrations/etherscan/etherscan.client.js';
 import {
+  type SplTokenBalance,
   getSolBalanceLamports,
-  getSolPriceUsd,
   getSplTokenAccounts,
   lamportsToSol,
 } from '../../integrations/solana/solana.client.js';
-import { getMarketDataBySymbol, getTokenPricesUsd } from '../../integrations/coingecko/coingecko.client.js';
+import {
+  type CoinMarketData,
+  type TokenPrice,
+  getMarketDataBySymbol,
+  getTokenPricesUsd,
+} from '../../integrations/coingecko/coingecko.client.js';
 import { getAccountBalances, getAssetPriceUsd } from '../../integrations/binance/binance.client.js';
 import { getWalletBalanceUsd } from '../../integrations/bybit/bybit.client.js';
 import { getUserBalance } from '../../integrations/cryptocom/cryptocom.client.js';
@@ -159,10 +164,10 @@ export class CryptoService {
         if (!apiKey) {
           throw new AppError(501, 'ETHERSCAN_NOT_CONFIGURED', 'Etherscan sync is not configured yet');
         }
-        return { tokens: await this.getEthereumTokens(wallet.address, apiKey), note: null };
+        return this.getEthereumTokens(wallet.address, apiKey);
       }
       case 'phantom':
-        return { tokens: await this.getSolanaTokens(wallet.address), note: null };
+        return this.getSolanaTokens(wallet.address);
       case 'crypto_com': {
         const keys = await this.requireExchangeKeys(
           userId,
@@ -202,7 +207,10 @@ export class CryptoService {
     const missing = tokens.filter((t) => t.logoUrl === null).map((t) => t.symbol);
     if (missing.length === 0) return tokens;
 
-    const marketData = await getMarketDataBySymbol(missing);
+    // Purely cosmetic enrichment (logo/name) — a CoinGecko failure here (rate limit is common,
+    // this fires on every wallet with unresolved symbols, e.g. every SPL mint prefix on a
+    // Phantom wallet) must not 500 the whole token list over a missing logo.
+    const marketData = await getMarketDataBySymbol(missing).catch(() => new Map<string, CoinMarketData>());
     if (marketData.size === 0) return tokens;
 
     return tokens.map((t) => {
@@ -233,16 +241,58 @@ export class CryptoService {
     return { apiKey, apiSecret };
   }
 
-  private async getEthereumTokens(address: string, apiKey: string): Promise<WalletToken[]> {
-    const contracts = await getErc20ContractsTouched(address, apiKey);
-    if (contracts.length === 0) return [];
+  /** Native coin (ETH/SOL) isn't an ERC20/SPL entry — Etherscan/Solana RPC only expose it via
+   * a separate "account balance" call, so it has to be folded in here explicitly or it silently
+   * never appears in "Tokens détenus" for wallets holding only the native coin (no other tokens). */
+  private buildNativeToken(
+    symbol: string,
+    amount: number,
+    marketData: Map<string, CoinMarketData>,
+  ): WalletToken {
+    const data = marketData.get(symbol);
+    return {
+      symbol,
+      name: data?.name ?? null,
+      logoUrl: data?.logoUrl ?? null,
+      amount,
+      priceUsd: data?.priceUsd ?? null,
+      valueUsdCents: data?.priceUsd != null ? Math.round(amount * data.priceUsd * 100) : null,
+      change24hPct: data?.change24hPct ?? null,
+    };
+  }
 
-    const prices = await getTokenPricesUsd(
-      'ethereum',
-      contracts.map((c) => c.contractAddress),
-    );
+  private async getEthereumTokens(
+    address: string,
+    apiKey: string,
+  ): Promise<{ tokens: WalletToken[]; note: string | null }> {
+    // Native balance is fetched in addition to the ERC20 list (added after that list was
+    // already working) — a failure here (bad address, Etherscan hiccup) must not 500 the whole
+    // token list, so it's caught and simply omits the native row rather than propagating.
+    // The ERC20 contract list itself is guarded the same way (Etherscan's free tier does rate-
+    // limit): a failure there degrades to an empty list + explanatory note instead of a 500,
+    // rather than losing the native row too on a call that's otherwise unrelated to it.
+    const [wei, contractsResult] = await Promise.all([
+      getEthBalanceWei(address, apiKey).catch(() => 0n),
+      getErc20ContractsTouched(address, apiKey)
+        .then((contracts) => ({ contracts, failed: false as const }))
+        .catch(() => ({ contracts: [] as Erc20ContractInfo[], failed: true as const })),
+    ]);
+    const nativeAmount = weiToEth(wei);
+    const contracts = contractsResult.contracts;
 
-    const tokens = await Promise.all(
+    const [nativeMarketData, prices] = await Promise.all([
+      nativeAmount > 0
+        ? getMarketDataBySymbol(['ETH']).catch(() => new Map<string, CoinMarketData>())
+        : Promise.resolve(new Map<string, CoinMarketData>()),
+      contracts.length > 0
+        ? getTokenPricesUsd(
+            'ethereum',
+            contracts.map((c) => c.contractAddress),
+          )
+        : Promise.resolve<Record<string, TokenPrice>>({}),
+    ]);
+
+    const erc20Tokens = await Promise.all(
       contracts.map(async (c): Promise<WalletToken | null> => {
         const raw = await getErc20Balance(address, c.contractAddress, apiKey);
         const amount = Number(raw) / 10 ** c.tokenDecimal;
@@ -260,44 +310,94 @@ export class CryptoService {
       }),
     );
 
-    return tokens.filter((t): t is WalletToken => t !== null);
+    const tokens = erc20Tokens.filter((t): t is WalletToken => t !== null);
+    if (nativeAmount > 0) tokens.unshift(this.buildNativeToken('ETH', nativeAmount, nativeMarketData));
+    return {
+      tokens,
+      note: contractsResult.failed
+        ? "Impossible de récupérer la liste des tokens ERC20 pour le moment (Etherscan indisponible ou limité) — réessayez plus tard."
+        : null,
+    };
   }
 
-  private async getSolanaTokens(address: string): Promise<WalletToken[]> {
-    const accounts = await getSplTokenAccounts(env.SOLANA_RPC_URL, address);
-    if (accounts.length === 0) return [];
+  private async getSolanaTokens(address: string): Promise<{ tokens: WalletToken[]; note: string | null }> {
+    // Same reasoning as getEthereumTokens: don't let a native-balance failure (invalid address,
+    // RPC hiccup) take down the SPL token list, and don't let the SPL list itself (Solana's
+    // public RPC is easily rate-limited, verified live: repeated calls return 429/error on
+    // getTokenAccountsByOwner) take down the whole response either — degrade to a note instead.
+    const [lamports, accountsResult] = await Promise.all([
+      getSolBalanceLamports(env.SOLANA_RPC_URL, address).catch(() => 0),
+      getSplTokenAccounts(env.SOLANA_RPC_URL, address)
+        .then((accounts) => ({ accounts, failed: false as const }))
+        .catch(() => ({ accounts: [] as SplTokenBalance[], failed: true as const })),
+    ]);
+    const nativeAmount = lamportsToSol(lamports);
+    const accounts = accountsResult.accounts;
 
-    const prices = await getTokenPricesUsd(
-      'solana',
-      accounts.map((a) => a.mint),
-    );
+    const [nativeMarketData, prices] = await Promise.all([
+      nativeAmount > 0
+        ? getMarketDataBySymbol(['SOL']).catch(() => new Map<string, CoinMarketData>())
+        : Promise.resolve(new Map<string, CoinMarketData>()),
+      accounts.length > 0
+        ? getTokenPricesUsd(
+            'solana',
+            accounts.map((a) => a.mint),
+          )
+        : Promise.resolve<Record<string, TokenPrice>>({}),
+    ]);
 
-    return accounts.map((a) => {
-      const price = prices[a.mint.toLowerCase()];
-      return {
-        symbol: `${a.mint.slice(0, 4)}…${a.mint.slice(-4)}`,
-        name: null,
-        logoUrl: null,
-        amount: a.amount,
-        priceUsd: price?.usd ?? null,
-        valueUsdCents: price?.usd != null ? Math.round(a.amount * price.usd * 100) : null,
-        change24hPct: price?.usd24hChange ?? null,
-      };
-    });
+    // "No CoinGecko price" is only trustworthy as a spam signal when CoinGecko itself is
+    // actually reachable right now — verified live: during a rate-limited window every price
+    // lookup fails the same way (empty map, caught above), which would otherwise make the spam
+    // filter wipe out real holdings (SOL, USDT, staked SOL...) right along with the junk. SOL's
+    // own price acts as a canary: if a native balance exists but its price didn't resolve,
+    // CoinGecko is currently unavailable, so filtering is skipped entirely for this response
+    // (falls back to showing every token, unfiltered, same as before spam filtering existed).
+    const pricingAvailable = nativeAmount === 0 || nativeMarketData.has('SOL');
+
+    const splTokens = accounts
+      .map((a): WalletToken => {
+        const price = prices[a.mint.toLowerCase()];
+        return {
+          symbol: `${a.mint.slice(0, 4)}…${a.mint.slice(-4)}`,
+          name: null,
+          logoUrl: null,
+          amount: a.amount,
+          priceUsd: price?.usd ?? null,
+          valueUsdCents: price?.usd != null ? Math.round(a.amount * price.usd * 100) : null,
+          change24hPct: price?.usd24hChange ?? null,
+        };
+      })
+      // Solana wallets accumulate spam/airdropped token accounts (scam projects sending 1 unit
+      // of a worthless token to random addresses to advertise) that Phantom's own UI filters
+      // out — verified live against a real wallet: 16 of 19 SPL accounts held were this kind of
+      // spam, none priced by CoinGecko. A token with neither a resolved price nor a resolved
+      // name is dropped rather than shown as if it were a real holding.
+      .filter((t) => !pricingAvailable || t.priceUsd !== null || t.name !== null);
+
+    if (nativeAmount > 0) splTokens.unshift(this.buildNativeToken('SOL', nativeAmount, nativeMarketData));
+    return {
+      tokens: splTokens,
+      note: accountsResult.failed
+        ? "Impossible de récupérer la liste des tokens SPL pour le moment (RPC Solana indisponible ou limité) — réessayez plus tard."
+        : null,
+    };
   }
 
   private async syncEthereum(wallet: CryptoWallet, apiKey: string) {
-    const wei = await getEthBalanceWei(wallet.address, apiKey);
-    const ethBalance = weiToEth(wei);
-    const priceUsd = await getEthPriceUsd();
-    const totalValueUsd = Math.round(ethBalance * priceUsd * 100);
+    // Previously only counted the native ETH balance, silently ignoring any ERC20 tokens held —
+    // undercounted the real wallet value (and therefore the patrimoine total) for any wallet
+    // holding tokens beyond native ETH. Reuses getEthereumTokens (same source as "Tokens
+    // détenus") so the stored total and the displayed token list always agree.
+    const { tokens } = await this.getEthereumTokens(wallet.address, apiKey);
+    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
 
     const [snapshot] = await this.db
       .insert(schema.cryptoSnapshots)
       .values({
         walletId: wallet.id,
         totalValueUsd,
-        rawData: { wei: wei.toString(), ethBalance, priceUsd },
+        rawData: { tokens },
       })
       .returning();
 
@@ -398,17 +498,18 @@ export class CryptoService {
   }
 
   private async syncSolana(wallet: CryptoWallet) {
-    const lamports = await getSolBalanceLamports(env.SOLANA_RPC_URL, wallet.address);
-    const solBalance = lamportsToSol(lamports);
-    const priceUsd = await getSolPriceUsd();
-    const totalValueUsd = Math.round(solBalance * priceUsd * 100);
+    // Same reasoning as syncEthereum: reuse getSolanaTokens (native SOL + spam-filtered SPL
+    // tokens) rather than pricing native SOL alone, so the stored total matches what "Tokens
+    // détenus" actually shows instead of undercounting SPL holdings.
+    const { tokens } = await this.getSolanaTokens(wallet.address);
+    const totalValueUsd = tokens.reduce((sum, t) => sum + (t.valueUsdCents ?? 0), 0);
 
     const [snapshot] = await this.db
       .insert(schema.cryptoSnapshots)
       .values({
         walletId: wallet.id,
         totalValueUsd,
-        rawData: { lamports, solBalance, priceUsd },
+        rawData: { tokens },
       })
       .returning();
 

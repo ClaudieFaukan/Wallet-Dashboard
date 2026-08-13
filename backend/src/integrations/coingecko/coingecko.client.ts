@@ -16,35 +16,45 @@ interface CoinGeckoTokenPriceResponse {
   [contractAddress: string]: { usd?: number; usd_24h_change?: number };
 }
 
-/** Batched USD price + 24h change for a list of token contract addresses, via
- * CoinGecko's public (no-key) token_price endpoint — one request for every
- * token on a wallet instead of one per token. Returns a map keyed by
- * lowercased contract address; missing entries mean CoinGecko has no listing
- * for that token (unknown/illiquid tokens are common on personal wallets). */
+/** USD price + 24h change for a list of token contract addresses, via CoinGecko's public
+ * (no-key) token_price endpoint. One request per address, run sequentially — CoinGecko's free
+ * tier used to accept a comma-joined batch here, but now rejects (400) any request listing
+ * more than one contract address, so a wallet holding 2+ tokens would otherwise fail entirely.
+ * Sequential (not parallel) because the free tier's overall rate limit is easily blown through
+ * by firing one request per token at once on a wallet with a dozen+ tokens (verified live: 13
+ * parallel requests triggered a 429). Returns a map keyed by lowercased contract address; an
+ * address is absent from the map if CoinGecko has no listing for it (common for unknown/illiquid
+ * tokens) or if that one lookup failed — either way the caller treats it the same (no price for
+ * that token), rather than letting one bad/rate-limited address take down every other token's
+ * price. */
 export async function getTokenPricesUsd(
   platform: 'ethereum' | 'solana',
   contractAddresses: string[],
 ): Promise<Record<string, TokenPrice>> {
-  if (contractAddresses.length === 0) return {};
-
-  const url = new URL(`https://api.coingecko.com/api/v3/simple/token_price/${platform}`);
-  url.searchParams.set('contract_addresses', contractAddresses.join(','));
-  url.searchParams.set('vs_currencies', 'usd');
-  url.searchParams.set('include_24hr_change', 'true');
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`CoinGecko request failed: ${response.status}`);
-  }
-
-  const data = (await response.json()) as CoinGeckoTokenPriceResponse;
   const result: Record<string, TokenPrice> = {};
-  for (const [address, price] of Object.entries(data)) {
-    result[address.toLowerCase()] = {
-      usd: price.usd ?? null,
-      usd24hChange: price.usd_24h_change ?? null,
-    };
+
+  for (const address of contractAddresses) {
+    const url = new URL(`https://api.coingecko.com/api/v3/simple/token_price/${platform}`);
+    url.searchParams.set('contract_addresses', address);
+    url.searchParams.set('vs_currencies', 'usd');
+    url.searchParams.set('include_24hr_change', 'true');
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+
+      const data = (await response.json()) as CoinGeckoTokenPriceResponse;
+      // Only one address was requested, so take whichever single entry comes back rather
+      // than relying on the response key matching our casing exactly.
+      const price = Object.values(data)[0];
+      if (price) {
+        result[address.toLowerCase()] = { usd: price.usd ?? null, usd24hChange: price.usd_24h_change ?? null };
+      }
+    } catch {
+      // Treated the same as "CoinGecko has no listing for this token" — see doc comment above.
+    }
   }
+
   return result;
 }
 

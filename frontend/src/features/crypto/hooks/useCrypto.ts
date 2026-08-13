@@ -41,6 +41,14 @@ export function useUpdateWallet() {
   });
 }
 
+export function useDeleteWallet() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.crypto.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: cryptoKey }),
+  });
+}
+
 export function useSyncWallet() {
   const queryClient = useQueryClient();
   return useMutation({
